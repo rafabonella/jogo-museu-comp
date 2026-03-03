@@ -1,0 +1,230 @@
+/* Reset para tirar margens padrão do navegador */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: #1a1a2e;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+#container-jogo {
+    display: flex;
+    width: 100%;
+    max-width: 900px;
+    height: 600px;
+    max-height: 95vh;
+
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    overflow: hidden;
+}
+
+/* ----Lado Esquerdo---- */
+#secao-tabuleiro {
+    width: 60%;
+    background-color: #16213e;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    gap: 2px;
+    
+    background-color: #0f3460;
+    border: 4px solid #0f3460;
+
+    width: 90%;
+    max-width: 450px;
+    aspect-ratio: 1 / 1;
+}
+
+/* ----Lado Direito---- */
+#secao-controles {
+    width: 40%;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    overflow: hidden;
+}
+
+#cabecalho h2{
+    color: #1a1a2e;
+    margin-bottom: 5px;
+}
+
+#cabecalho p {
+    color: #555;
+    font-size: 14px;
+}
+
+#fila-comandos {
+    flex-grow: 1;
+    min-height: 0;
+    background-color: #f4f4f4;
+    border-radius: 2px dashed #ccc;
+    border-radius: 8px;
+    margin: 15px 0;
+    padding: 10px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+#msg-vazia {
+    text-align: center;
+    color: #aaa;
+    font-style: italic;
+    margin-top: 20px;
+}
+
+#area-botoes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.botoes {
+    padding: 10px;
+    background-color: #0f3460;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+.botoes:hover{
+    background-color: #1a1a2e;
+}
+
+#btn-executar {
+    padding: 15px;
+    background-color: #e94560;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+}
+#btn-executar:hover{
+    background-color: #d13d55;
+}
+
+/* --- CLASSES DO JAVASCRIPT --- */
+
+.celula {
+    width: 100%;
+    height: 100%;
+    transition: background-color 0.2s, transform 0.2s;
+}
+
+.caminho { background-color: #e94560; } 
+.parede { background-color: #16213e; border: 1px solid #0f3460; } 
+.objetivo { background-color: #ffd700; } 
+
+.personagem { 
+    background-color: #4caf50; 
+    border: 3px solid #fff; 
+    transform: scale(0.9); 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.bloco-comando {
+    background-color: #0f3460;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+}
+
+
+/* ---Responsividade--- */
+@media (max-width: 768px) {
+    body { align-items: flex-start; }
+
+    #container-jogo {
+        flex-direction: column;
+        width: 100%;
+        height: 100dvh;
+        border-radius: 0;
+    }
+
+    #secao-tabuleiro {
+        width: 100%;
+        height: 45dvh; 
+        padding: 10px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    #grid {
+        width: min(100%, 40dvh);
+        height: min(100%, 40dvh);
+        aspect-ratio: 1 / 1;
+        margin: 0;
+        max-width: none;
+        max-height: none;
+    }
+
+    #secao-controles {
+        width: 100%;
+        height: 55dvh; 
+        padding: 10px 15px 15px 15px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #cabecalho { flex-shrink: 0; } 
+    #cabecalho h2 {
+        font-size: 16px;
+        margin-bottom: 2px;
+    }
+    #cabecalho p {
+        font-size: 12px;
+        margin-bottom: 5px;
+        line-height: 1.2;
+    }
+
+    #fila-comandos {
+        flex-grow: 1;
+        min-height: 0;
+        overflow-y: auto;
+        margin: 10px 0;
+        padding: 5px;
+    }
+
+    #area-botoes { 
+        flex-shrink: 0; 
+        gap: 8px; 
+        margin-bottom: 10px; 
+    }
+    .botoes { padding: 10px; font-size: 13px; }
+    
+    #btn-executar { 
+        flex-shrink: 0; 
+        padding: 12px; 
+        font-size: 16px; 
+    }
+}

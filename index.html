@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo Museu Comp</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="container-jogo">
+
+        <div id="secao-tabuleiro">
+            <div id="grid"></div>
+        </div>
+
+        <div id="secao-controles">
+
+            <div id="cabecalho">
+                <h2>Fase 1: O início</h2>
+                <p>Ajude Ada Lovelace a chegar na máquina analítica de Babbage</p>
+            </div>
+
+            <div id="fila-comandos">
+                <p id="msg-vazia">Sua sequência de comandos aparecerá aqui...</p>
+            </div>
+
+            <div id="area-botoes">
+                <button id="btn-frente" class="botoes">↑ Avançar</button>
+                <button id="btn-esq" class="botoes">⭯ Girar pra esquerda</button>
+                <button id="btn-dir" class="botoes">⭮ Girar pra direita</button>
+                <button id="btn-coletar" class="botoes">⚙️ Coletar</button>
+            </div>
+
+            <button id="btn-executar">▶ Executar código</button>
+
+        </div>
+
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
