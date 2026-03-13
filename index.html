@@ -17,7 +17,7 @@
         <div id="secao-controles">
 
             <div id="cabecalho">
-                <h2>Fase 1: O início</h2>
+                <h2>Fase 1: O Início</h2>
                 <p>Ajude Ada Lovelace a chegar na máquina analítica de Babbage</p>
             </div>
 
@@ -26,18 +26,35 @@
             </div>
 
             <div id="area-botoes">
-                <button id="btn-frente" class="botoes">↑ Avançar</button>
-                <button id="btn-esq" class="botoes">⭯ Girar pra esquerda</button>
-                <button id="btn-dir" class="botoes">⭮ Girar pra direita</button>
+                <button id="btn-frente"  class="botoes">↑ Avançar</button>
+                <button id="btn-esq"     class="botoes">⭯ Girar pra esquerda</button>
+                <button id="btn-dir"     class="botoes">⭮ Girar pra direita</button>
                 <button id="btn-coletar" class="botoes">⚙️ Coletar</button>
             </div>
 
+            <button id="btn-limpar"   class="botoes" style="margin-bottom:8px; background:#555;">🗑️ Limpar comandos</button>
             <button id="btn-executar">▶ Executar código</button>
 
         </div>
 
     </div>
-    
+
+    <!--
+        ORDEM DE CARREGAMENTO IMPORTANTE:
+        1. engine.js  — mecânica central (sem dependências)
+        2. faseN.js   — dados de cada fase (depende de nada)
+        3. script.js  — inicializador (depende de engine + fase)
+
+        Para adicionar uma nova fase:
+          • Crie um arquivo faseN.js seguindo o modelo de fase1.js
+          • Adicione <script src="faseN.js"></script> abaixo
+          • No fase anterior, defina: proximaFase: () => Engine.init(FASEN, 'grid')
+    -->
+    <script src="engine.js"></script>
+    <script src="fase1.js"></script>
+    <script src="fase2.js"></script>
+    <!-- <script src="fase2.js"></script> -->
+    <!-- <script src="fase3.js"></script> -->
     <script src="script.js"></script>
 </body>
 </html>
