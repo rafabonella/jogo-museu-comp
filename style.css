@@ -27,7 +27,7 @@ body {
     overflow: hidden;
 }
 
-/* ----Lado Esquerdo---- */
+/* ---- LADO ESQUERDO (Tabuleiro) ---- */
 #secao-tabuleiro {
     width: 60%;
     background-color: #16213e;
@@ -50,10 +50,11 @@ body {
     aspect-ratio: 1 / 1;
 }
 
-/* ----Lado Direito---- */
+/* ---- LADO DIREITO (Controles) ---- */
 #secao-controles {
     width: 40%;
-    padding: 20px;
+    /* Padding encolhe em telas menores */
+    padding: clamp(10px, 3vw, 20px); 
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -61,24 +62,27 @@ body {
     overflow: hidden;
 }
 
-#cabecalho h2{
+#cabecalho h2 {
     color: #1a1a2e;
     margin-bottom: 5px;
+    /* Título varia de 18px até 24px */
+    font-size: clamp(18px, 2.5vw, 24px); 
 }
 
 #cabecalho p {
     color: #555;
-    font-size: 14px;
+    /* Texto varia de 12px até 16px */
+    font-size: clamp(12px, 1.5vw, 16px);
 }
 
 #fila-comandos {
     flex-grow: 1;
     min-height: 0;
     background-color: #f4f4f4;
-    border-radius: 2px dashed #ccc;
+    border: 2px dashed #ccc; 
     border-radius: 8px;
-    margin: 15px 0;
-    padding: 10px;
+    margin: clamp(8px, 2vh, 15px) 0;
+    padding: clamp(6px, 1.5vw, 10px);
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -95,12 +99,13 @@ body {
 #area-botoes {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 15px;
+    gap: clamp(6px, 1.5vw, 10px); /* Espaço entre botões elástico */
+    margin-bottom: clamp(10px, 2vh, 15px);
 }
 
 .botoes {
-    padding: 10px;
+    padding: clamp(8px, 1.5vw, 12px);
+    font-size: clamp(12px, 1.5vw, 14px);
     background-color: #0f3460;
     color: white;
     border: none;
@@ -108,23 +113,19 @@ body {
     cursor: pointer;
     font-weight: bold;
 }
-.botoes:hover{
-    background-color: #1a1a2e;
-}
+.botoes:hover { background-color: #1a1a2e; }
 
 #btn-executar {
-    padding: 15px;
+    padding: clamp(12px, 2vw, 15px);
+    font-size: clamp(16px, 2vw, 20px);
     background-color: #e94560;
     color: white;
     border: none;
     border-radius: 8px;
-    font-size: 18px;
     font-weight: bold;
     cursor: pointer;
 }
-#btn-executar:hover{
-    background-color: #d13d55;
-}
+#btn-executar:hover { background-color: #d13d55; }
 
 /* --- CLASSES DO JAVASCRIPT --- */
 
@@ -158,11 +159,107 @@ body {
     justify-content: space-between;
 }
 
+/* --- CLASSE DE OCULTAÇÃO (Essencial para a transição) --- */
+.oculta { 
+    display: none !important; 
+}
 
-/* ---Responsividade--- */
+/* --- ESTILOS DA TELA INICIAL (Fluidos) --- */
+#tela-inicial {
+    width: 100%;
+    max-width: 900px;
+    height: 90dvh; 
+    max-height: 600px;
+    min-height: 450px;
+    background-color: #16213e;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative; 
+}
+
+.conteudo-inicial {
+    text-align: center;
+    width: 90%;
+    max-width: 500px;
+    margin-bottom: clamp(20px, 5vh, 50px); /* Margem que estica/encolhe */
+}
+
+.conteudo-inicial h1 {
+    color: #ffd700;
+    /* Fonte: mínimo 28px, ideal 5vw (relativo à tela), máximo 42px */
+    font-size: clamp(28px, 5vw, 42px);
+    margin-bottom: clamp(15px, 3vh, 30px);
+    text-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.instrucoes {
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: clamp(15px, 3vw, 25px); /* Espaçamento interno relativo */
+    border-radius: 8px;
+    border: 1px dashed #0f3460;
+    margin-bottom: clamp(20px, 4vh, 40px);
+    text-align: left;
+    color: #ccc;
+}
+
+.instrucoes h3 { 
+    color: #e94560; 
+    margin-bottom: clamp(10px, 2vh, 15px); 
+    font-size: clamp(18px, 3vw, 20px);
+}
+
+.instrucoes p { 
+    margin-bottom: clamp(8px, 1.5vh, 12px); 
+    font-size: clamp(13px, 2vw, 16px); 
+    line-height: 1.5; 
+}
+
+#btn-iniciar-jogo {
+    padding: clamp(12px, 2vh, 16px) clamp(20px, 5vw, 40px);
+    font-size: clamp(16px, 3vw, 22px);
+    font-weight: bold;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+    width: clamp(200px, 60%, 300px);
+}
+
+#btn-iniciar-jogo:hover { 
+    background-color: #45a049; 
+    transform: translateY(-2px); 
+}
+
+.creditos {
+    position: absolute;
+    bottom: clamp(10px, 2vh, 20px);
+    text-align: center;
+    color: #888;
+    font-size: clamp(11px, 1.5vw, 14px);
+    line-height: 1.6;
+    width: 90%; /* Evita que o texto encoste muito nas bordas no celular */
+}
+.creditos strong { color: #bbb; }
+
+/* --- RESPONSIVIDADE --- */
 @media (max-width: 768px) {
     body { align-items: flex-start; }
 
+    /* Tela Inicial (Celular) */
+    #tela-inicial {
+        height: 100dvh; 
+        max-height: none;
+        border-radius: 0; 
+    }
+
+    /* Jogo (Celular) - Muda de lado-a-lado para empilhado */
     #container-jogo {
         flex-direction: column;
         width: 100%;
@@ -174,57 +271,22 @@ body {
         width: 100%;
         height: 45dvh; 
         padding: 10px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
     }
 
     #grid {
+        /* Garante que o tabuleiro não vaze a tela */
         width: min(100%, 40dvh);
         height: min(100%, 40dvh);
-        aspect-ratio: 1 / 1;
         margin: 0;
-        max-width: none;
-        max-height: none;
     }
 
     #secao-controles {
         width: 100%;
         height: 55dvh; 
-        padding: 10px 15px 15px 15px;
-        display: flex;
-        flex-direction: column;
     }
 
-    #cabecalho { flex-shrink: 0; } 
-    #cabecalho h2 {
-        font-size: 16px;
-        margin-bottom: 2px;
-    }
-    #cabecalho p {
-        font-size: 12px;
-        margin-bottom: 5px;
-        line-height: 1.2;
-    }
-
-    #fila-comandos {
-        flex-grow: 1;
-        min-height: 0;
-        overflow-y: auto;
-        margin: 10px 0;
-        padding: 5px;
-    }
-
-    #area-botoes { 
+    /* Proteção para o Flexbox não esmagar elementos vitais */
+    #cabecalho, #area-botoes, #btn-executar { 
         flex-shrink: 0; 
-        gap: 8px; 
-        margin-bottom: 10px; 
-    }
-    .botoes { padding: 10px; font-size: 13px; }
-    
-    #btn-executar { 
-        flex-shrink: 0; 
-        padding: 12px; 
-        font-size: 16px; 
-    }
+    } 
 }

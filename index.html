@@ -8,7 +8,28 @@
 </head>
 <body>
 
-    <div id="container-jogo">
+    <div id="tela-inicial">
+        <div class="conteudo-inicial">
+            <h1>Jogo Museu</h1>
+            
+            <div class="instrucoes">
+                <h3>Como Jogar:</h3>
+                <p>1. Leia o objetivo na parte superior da tela.</p>
+                <p>2. Clique nos botões de ação para montar a sua sequência de comandos.</p>
+                <p>3. Quando chegar ao objetivo, não esqueça de usar o comando <strong>"Coletar"</strong>.</p>
+                <p>4. Aperte "Executar" para testar o seu algoritmo!</p>
+            </div>
+
+            <button id="btn-iniciar-jogo">▶ Iniciar Jogo</button>
+        </div>
+
+        <div class="creditos">
+            <p>Desenvolvido por: <strong>Bryan</strong>, <strong>Pedro</strong> e <strong>Rafaella Bonella</strong></p>
+            <p>Projeto Museu da Computação - UFU (2026)</p>
+        </div>
+    </div>
+    
+    <div id="container-jogo" class="oculta">
 
         <div id="secao-tabuleiro">
             <div id="grid"></div>

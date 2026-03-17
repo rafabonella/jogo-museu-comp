@@ -14,8 +14,8 @@ const FASE2 = {
     [      1, 0, 1, 0, 1, 1, 1, 0 ],  // row 3
     [      1, 1, 0, 1, 0, 1, 0, 1 ],  // row 4
     [      0, 1, 0, 0, 1, 1, 1, 1 ],  // row 5
-    [      1, 1, 1, 0, 1, 0, 3, 0 ],  // row 6
-    [      1, 0, 1, 1, 1, 1, 0, 0 ],  // row 7  ← objetivo em (7,6)
+    [      1, 1, 1, 0, 1, 0, 3, 0 ],  // row 6  ← objetivo em (6,6)
+    [      1, 0, 1, 1, 1, 1, 0, 0 ],  // row 7
   ],
 
   // Callback opcional para quando o jogador vencer (carrega próxima fase)

@@ -150,15 +150,15 @@ const Engine = (() => {
       if (cmd === 'frente') {
         const ok = _mover();
         if (!ok) { _erro('Bateu numa parede! Tente novamente.'); return; }
-        await _sleep(350);
+        await _sleep(300);
       } else if (cmd === 'esq') {
         direcao = (direcao + 3) % 4;
         _renderizarPersonagem();
-        await _sleep(350);
+        await _sleep(300);
       } else if (cmd === 'dir') {
         direcao = (direcao + 1) % 4;
         _renderizarPersonagem();
-        await _sleep(350);
+        await _sleep(300);
       } else if (cmd === 'coletar') {
         const tipo = faseAtual.mapa[pos.r][pos.c];
         if (tipo === 3) {
@@ -201,7 +201,8 @@ const Engine = (() => {
   // ---- Feedback ---------------------------------------------
   function _erro(msg) {
     executando = false;
-    _mostrarModal('❌ Erro!', msg, '#e94560', 'Tentar Novamente', () => _reiniciar());
+    // Passamos 'false' para NÃO limpar os comandos quando ele erra
+    _mostrarModal('❌ Erro!', msg, '#e94560', 'Tentar Novamente', () => _reiniciar(false));
   }
 
   function _sucesso() {
@@ -210,17 +211,26 @@ const Engine = (() => {
     const btnLabel   = temProxima ? 'Próxima Fase ➜' : 'Jogar Novamente';
     _mostrarModal('🏆 Parabéns!', faseAtual.msgSucesso ?? 'Você concluiu a fase!', '#4caf50', btnLabel, () => {
       if (temProxima) faseAtual.proximaFase();
-      else _reiniciar();
+      // Passamos 'true' para limpar os comandos se ele for recomeçar o jogo do zero
+      else _reiniciar(true); 
     });
   }
 
-  function _reiniciar() {
+  // Adicionamos o parâmetro limparFila (que por padrão é false)
+  function _reiniciar(limparFila = false) {
     pos       = { ...faseAtual.inicio };
     direcao   = faseAtual.direcaoInicial ?? 0;
-    comandos  = [];
     executando = false;
+    
+    // Só zera o array se for explicitamente solicitado
+    if (limparFila) {
+        comandos = [];
+        _atualizarFilaUI();
+    }
+
     _renderizarGrid();
-    _atualizarFilaUI();
+    
+    // Tira os destaques visuais (aquele brilho amarelo) dos blocos
     document.querySelectorAll('.bloco-comando').forEach(b => {
       b.style.outline = 'none';
       b.style.opacity = '1';
