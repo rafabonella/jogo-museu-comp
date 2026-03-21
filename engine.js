@@ -1,293 +1,640 @@
 // ============================================================
-//  ENGINE.JS — Mecânica central do jogo
+//  ENGINE.JS — Motor central do jogo
 //  Independente de fase. Recebe um objeto "fase" e roda tudo.
+//  Suporta múltiplos insetos por fase (células tipo 3).
 // ============================================================
 
 const Engine = (() => {
 
-  // Estado interno
+  // ── Estado ─────────────────────────────────────────────
   let faseAtual  = null;
-  let gridEl     = null;
-  let comandos   = [];        // fila de comandos montada pelo jogador
+  let comandos   = [];
   let pos        = { r: 0, c: 0 };
-  let direcao    = 0;         // 0=direita 1=baixo 2=esquerda 3=cima
+  let direcao    = 0;      // 0=direita 1=baixo 2=esquerda 3=cima
   let executando = false;
+  let passos     = 0;
+  let faseNum    = 1;
+
+  // Lista de bugs ativos nesta fase
+  let bugs = [];   // [{ r, c, emoji, vivo }]
+
+  // Animação de glitch por bug
+  let glitchStates = [];
+  let bugPhases    = [];
+
+  // Pool de emojis — joaninha, grilo, formiga, lagarta
+  const EMOJI_POOL = ['🐞', '🦗', '🐜', '🐛'];
+  function _sortearEmoji() {
+    return EMOJI_POOL[Math.floor(Math.random() * EMOJI_POOL.length)];
+  }
 
   const DIRS = [
-    { dr: 0, dc: 1,  nome: '→' },   // 0 direita
-    { dr: 1, dc: 0,  nome: '↓' },   // 1 baixo
-    { dr: 0, dc: -1, nome: '←' },   // 2 esquerda
-    { dr: -1, dc: 0, nome: '↑' },   // 3 cima
+    { dr: 0, dc:  1, angle:  0          },
+    { dr: 1, dc:  0, angle:  Math.PI/2  },
+    { dr: 0, dc: -1, angle:  Math.PI    },
+    { dr:-1, dc:  0, angle: -Math.PI/2  },
   ];
 
-  // ---- Inicialização ----------------------------------------
-  function init(fase, gridElementId) {
-    faseAtual = fase;
-    gridEl    = document.getElementById(gridElementId);
-    comandos  = [];
-    pos       = { ...fase.inicio };
-    direcao   = fase.direcaoInicial ?? 0;
-    executando = false;
+  // ── Tela de renderização ────────────────────────────────
+  const cv       = document.getElementById('game-canvas');
+  const ctx      = cv.getContext('2d');
+  const bugLayer = document.getElementById('bug-layer');
 
-    _renderizarCabecalho(fase);
-    _renderizarGrid();
-    _atualizarFilaUI();
+  // Canvas offscreen para pré-renderizar o mapa estático
+  // (paredes, grid) — desenhado só quando a fase muda
+  let offscreen    = null;
+  let offCtx       = null;
+  let mapaPreRend  = false;
+
+  let CELL = 36, COLS = 8, ROWS = 8;
+
+  // Coordenadas animadas da nave (efeito de deslizamento e rotação)
+  let animPx = 0, animPy = 0, animAngle = 0;
+
+  // Partículas da captura dos bugs: arrays paralelos evitam criação de objetos no loop
+  const MAX_PARTICLES = 80;
+  let pX   = new Float32Array(MAX_PARTICLES);
+  let pY   = new Float32Array(MAX_PARTICLES);
+  let pVX  = new Float32Array(MAX_PARTICLES);
+  let pVY  = new Float32Array(MAX_PARTICLES);
+  let pL   = new Float32Array(MAX_PARTICLES); // life
+  let pCol = new Uint8Array(MAX_PARTICLES);   // 0=azul 1=ambar
+  let pCount = 0;
+
+  let rafId = null;
+
+  // ── Ajuste do tamanho do canvas ─────────────────────────
+  function _setCanvasSize(rows, cols) {
+    ROWS = rows; COLS = cols;
+    const mobile = window.innerWidth <= 700;
+    const maxPx = mobile
+      ? Math.floor(Math.min(window.innerWidth * 0.92, window.innerHeight * 0.45))
+      : 380;
+    CELL = Math.floor(maxPx / Math.max(rows, cols));
+    cv.width  = CELL * cols;
+    cv.height = CELL * rows;
+    bugLayer.style.width  = cv.width  + 'px';
+    bugLayer.style.height = cv.height + 'px';
+
+    offscreen = document.createElement('canvas');
+    offscreen.width  = cv.width;
+    offscreen.height = cv.height;
+    offCtx = offscreen.getContext('2d');
+    mapaPreRend = false;
   }
 
-  function _renderizarCabecalho(fase) {
-    const h2 = document.querySelector('#cabecalho h2');
-    const p  = document.querySelector('#cabecalho p');
-    if (h2) h2.textContent = fase.titulo;
-    if (p)  p.textContent  = fase.descricao;
-  }
+  // Recalcula o canvas quando a janela é redimensionada
+  let _resizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(() => {
+      if (faseAtual) {
+        _setCanvasSize(faseAtual.mapa.length, faseAtual.mapa[0].length);
+        animPx = pos.c * CELL + CELL / 2;
+        animPy = pos.r * CELL + CELL / 2;
+        bugEls.forEach((el, i) => {
+          if (!bugs[i].vivo) return;
+          el.style.left     = (bugs[i].c * CELL) + 'px';
+          el.style.top      = (bugs[i].r * CELL) + 'px';
+          el.style.width    = CELL + 'px';
+          el.style.height   = CELL + 'px';
+          el.style.fontSize = Math.floor(CELL * 0.52) + 'px';
+        });
+      }
+    }, 150);
+  });
 
-  // ---- Grid -------------------------------------------------
-  function _renderizarGrid() {
-    gridEl.innerHTML = '';
-    const rows = faseAtual.mapa.length;
-    const cols = faseAtual.mapa[0].length;
-    gridEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-    gridEl.style.gridTemplateRows    = `repeat(${rows}, 1fr)`;
+  // Pré-renderiza o mapa (fundo + grid + paredes) no canvas offscreen
+  // Chamado apenas uma vez por fase, não a cada frame
+  function _preRenderizarMapa() {
+    const W = offscreen.width, H = offscreen.height;
+    // Apaga tudo no offscreen
+    offCtx.clearRect(0, 0, W, H);
 
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const cell = document.createElement('div');
-        cell.classList.add('celula');
-        cell.dataset.r = r;
-        cell.dataset.c = c;
+    // Fundo escuro
+    offCtx.fillStyle = '#040e1a';
+    offCtx.fillRect(0, 0, W, H);
 
-        const tipo = faseAtual.mapa[r][c];
-        if (tipo === 1) cell.classList.add('caminho');
-        if (tipo === 2) cell.classList.add('parede');
-        if (tipo === 3) cell.classList.add('objetivo');
+    // Micro-grid de fundo — desenhado em um único path por direção
+    offCtx.strokeStyle = 'rgba(93,173,226,.04)'; offCtx.lineWidth = .5;
+    offCtx.beginPath();
+    for (let i = 0; i <= W; i += 10) { offCtx.moveTo(i, 0); offCtx.lineTo(i, H); }
+    for (let i = 0; i <= H; i += 10) { offCtx.moveTo(0, i); offCtx.lineTo(W, i); }
+    offCtx.stroke();
 
-        gridEl.appendChild(cell);
+    // Grade de células — também em path único
+    offCtx.strokeStyle = 'rgba(93,173,226,.12)'; offCtx.lineWidth = .5;
+    offCtx.beginPath();
+    for (let i = 0; i <= COLS; i++) { offCtx.moveTo(i*CELL, 0); offCtx.lineTo(i*CELL, H); }
+    for (let i = 0; i <= ROWS; i++) { offCtx.moveTo(0, i*CELL); offCtx.lineTo(W, i*CELL); }
+    offCtx.stroke();
+
+    // Paredes — fill + borda + hachuras
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (faseAtual.mapa[r][c] !== 0) continue;
+        const x = c * CELL, y = r * CELL;
+        offCtx.fillStyle = 'rgba(93,173,226,.10)';
+        offCtx.fillRect(x+.5, y+.5, CELL-1, CELL-1);
+        offCtx.strokeStyle = 'rgba(93,173,226,.30)'; offCtx.lineWidth = .8;
+        offCtx.strokeRect(x+.5, y+.5, CELL-1, CELL-1);
+        // Hachura diagonal em path único por célula
+        offCtx.save();
+        offCtx.beginPath(); offCtx.rect(x+1, y+1, CELL-2, CELL-2); offCtx.clip();
+        offCtx.strokeStyle = 'rgba(93,173,226,.07)'; offCtx.lineWidth = .5;
+        offCtx.beginPath();
+        for (let d = -CELL; d < CELL*2; d += 9) {
+          offCtx.moveTo(x+d, y); offCtx.lineTo(x+d+CELL, y+CELL);
+        }
+        offCtx.stroke();
+        offCtx.restore();
       }
     }
-    _renderizarPersonagem();
+
+    // Rótulos A B C… e 1 2 3… (estáticos, ficam no offscreen)
+    offCtx.font = `${Math.max(5, Math.floor(CELL * 0.18))}px "Space Mono",monospace`;
+    offCtx.fillStyle = 'rgba(93,173,226,.18)';
+    offCtx.textAlign = 'center'; offCtx.textBaseline = 'middle';
+    for (let c = 0; c < COLS; c++) offCtx.fillText(String.fromCharCode(65+c), c*CELL+CELL/2, 6);
+    offCtx.textAlign = 'right';
+    for (let r = 0; r < ROWS; r++) offCtx.fillText(r+1, 8, r*CELL+CELL/2);
+
+    mapaPreRend = true;
   }
 
-  function _renderizarPersonagem() {
-    // limpa personagem anterior
-    document.querySelectorAll('.personagem').forEach(el => {
-      el.classList.remove('personagem');
-      el.innerHTML = '';
+  // ── Elementos visuais dos bugs (DOM overlay) ────────────
+  function _criarBugEls() {
+    bugLayer.innerHTML = '';
+    return bugs.map(bug => {
+      const el = document.createElement('div');
+      el.className = 'bug-el';
+      el.textContent = bug.emoji;
+      // Consolida todos os estilos em uma única atribuição
+      el.style.cssText = `left:${bug.c*CELL}px;top:${bug.r*CELL}px;width:${CELL}px;height:${CELL}px;font-size:${Math.floor(CELL*0.52)}px`;
+      bugLayer.appendChild(el);
+      return el;
+    });
+  }
+
+  let bugEls = [];
+
+  // Contador de frames para reduzir frequência do glitch no mobile
+  let frameCount = 0;
+
+  function _atualizarBugEls(ts) {
+    bugs.forEach((bug, i) => {
+      if (!bug.vivo) return;
+      const gs = glitchStates[i];
+      const p  = Math.sin(bugPhases[i]) * 0.5 + 0.5;
+      bugPhases[i] += 0.035;
+
+      if (ts > gs.nextGlitch && !gs.glitching) {
+        gs.glitching = true;
+        gs.glitchEnd = ts + 80 + Math.random() * 140;
+        gs.ox   = (Math.random() - 0.5) * 7;
+        gs.oy   = (Math.random() - 0.5) * 7;
+        gs.skew = (Math.random() - 0.5) * 18;
+      }
+      if (gs.glitching && ts > gs.glitchEnd) {
+        gs.glitching = false;
+        gs.ox = 0; gs.oy = 0; gs.skew = 0;
+        gs.nextGlitch = ts + 900 + Math.random() * 2800;
+      }
+
+      const mx    = gs.glitching ? (Math.random() - 0.5) * 4 : 0;
+      const my    = gs.glitching ? (Math.random() - 0.5) * 4 : 0;
+      const scale = 0.9 + p * 0.18;
+      const el    = bugEls[i];
+
+      // Consolida todas as propriedades de estilo em uma única string
+      // evitando múltiplos reflows por bug por frame
+      const filterVal = gs.glitching
+        ? `drop-shadow(0 0 ${(8+p*10).toFixed(1)}px rgba(255,50,50,${(0.5+p*0.5).toFixed(2)}))`
+        : `drop-shadow(0 0 ${(4+p*8).toFixed(1)}px rgba(224,85,85,${(0.3+p*0.5).toFixed(2)}))`;
+
+      const opacity = (gs.glitching && Math.random() < 0.3)
+        ? (Math.random() < 0.5 ? '0.3' : '1') : '1';
+
+      el.style.cssText = `left:${(bug.c*CELL+gs.ox+mx).toFixed(1)}px;top:${(bug.r*CELL+gs.oy+my).toFixed(1)}px;width:${CELL}px;height:${CELL}px;font-size:${Math.floor(CELL*0.52)}px;transform:scale(${scale.toFixed(3)}) skewX(${gs.skew.toFixed(1)}deg);filter:${filterVal};opacity:${opacity};display:flex;align-items:center;justify-content:center;position:absolute;line-height:1;transform-origin:center center;pointer-events:none;transition:opacity .3s`;
+    });
+  }
+
+  // ── Loop de animação e desenho ──────────────────────────
+  function _loop(ts) {
+    frameCount++;
+
+    // Suaviza posição da nave
+    const tx = pos.c * CELL + CELL / 2;
+    const ty = pos.r * CELL + CELL / 2;
+    animPx += (tx - animPx) * 0.22;
+    animPy += (ty - animPy) * 0.22;
+
+    // Suaviza ângulo
+    const anguloAlvo = DIRS[direcao].angle;
+    let da = anguloAlvo - animAngle;
+    while (da >  Math.PI) da -= Math.PI * 2;
+    while (da < -Math.PI) da += Math.PI * 2;
+    animAngle += da * 0.22;
+
+    // Atualiza partículas com arrays tipados
+    for (let i = 0; i < pCount; i++) {
+      pX[i]  += pVX[i]; pY[i]  += pVY[i];
+      pVX[i] *= 0.87;   pVY[i] *= 0.87;
+      pL[i]  -= 0.055;
+    }
+    // Remove partículas mortas compactando o array
+    let alive = 0;
+    for (let i = 0; i < pCount; i++) {
+      if (pL[i] > 0) {
+        if (alive !== i) {
+          pX[alive]=pX[i]; pY[alive]=pY[i];
+          pVX[alive]=pVX[i]; pVY[alive]=pVY[i];
+          pL[alive]=pL[i]; pCol[alive]=pCol[i];
+        }
+        alive++;
+      }
+    }
+    pCount = alive;
+
+    // Atualiza bugs DOM
+    _atualizarBugEls(ts);
+
+    const W = cv.width, H = cv.height;
+
+    // Pré-renderiza o mapa se ainda não foi feito
+    if (!mapaPreRend) _preRenderizarMapa();
+
+    // Copia o mapa pré-renderizado para o canvas principal
+    ctx.drawImage(offscreen, 0, 0);
+
+    // Halo dos bugs (dinâmico — pulsa com o tempo)
+    bugs.forEach((bug, i) => {
+      if (!bug.vivo) return;
+      const p  = Math.sin(bugPhases[i]) * 0.5 + 0.5;
+      const gs = glitchStates[i];
+      const bx = bug.c * CELL + CELL / 2;
+      const by = bug.r * CELL + CELL / 2;
+      ctx.beginPath(); ctx.arc(bx, by, 13 + p*4, 0, Math.PI*2);
+      ctx.fillStyle = gs.glitching
+        ? `rgba(255,50,50,${(0.06+p*0.12).toFixed(2)})`
+        : `rgba(224,85,85,${(0.04+p*0.09).toFixed(2)})`;
+      ctx.fill();
+      ctx.beginPath(); ctx.arc(bx, by, 10 + p*3, 0, Math.PI*2);
+      ctx.strokeStyle = gs.glitching
+        ? `rgba(255,50,50,${(0.4+p*0.6).toFixed(2)})`
+        : `rgba(224,85,85,${(0.2+p*0.6).toFixed(2)})`;
+      ctx.lineWidth = 0.8 + p; ctx.stroke();
     });
 
-    const cell = _getCell(pos.r, pos.c);
-    if (!cell) return;
-    cell.classList.add('personagem');
+    // Destaque sutil da célula da nave
+    ctx.fillStyle = 'rgba(93,173,226,.07)';
+    ctx.fillRect(pos.c*CELL+1, pos.r*CELL+1, CELL-2, CELL-2);
 
-    const seta = document.createElement('span');
-    seta.textContent = DIRS[direcao].nome;
-    seta.style.cssText = 'font-size:clamp(10px,2vw,18px); line-height:1; color:#fff; pointer-events:none;';
-    cell.appendChild(seta);
+    // Partículas
+    for (let i = 0; i < pCount; i++) {
+      ctx.beginPath();
+      ctx.arc(pX[i], pY[i], 2.5*pL[i], 0, Math.PI*2);
+      ctx.fillStyle = pCol[i] === 0
+        ? `rgba(93,173,226,${pL[i].toFixed(2)})`
+        : `rgba(232,160,32,${pL[i].toFixed(2)})`;
+      ctx.fill();
+    }
+
+    // Desenho da nave
+    ctx.save();
+    ctx.translate(animPx, animPy);
+    ctx.rotate(animAngle + Math.PI / 2);
+    // Aura
+    ctx.beginPath(); ctx.arc(0, 0, Math.floor(CELL * 0.44), 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(93,173,226,.07)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(93,173,226,.22)'; ctx.lineWidth = .8; ctx.stroke();
+    // Corpo
+    const s = CELL * 0.32;
+    ctx.beginPath();
+    ctx.moveTo(0, -s); ctx.lineTo(s*0.6, s*0.6);
+    ctx.lineTo(0, s*0.2); ctx.lineTo(-s*0.6, s*0.6);
+    ctx.closePath();
+    ctx.fillStyle = '#5dade2'; ctx.fill();
+    ctx.strokeStyle = 'rgba(93,173,226,.8)'; ctx.lineWidth = .5; ctx.stroke();
+    // Chama do propulsor
+    const ep = Math.abs(Math.sin(ts * 0.012)) * 0.4 + 0.3;
+    ctx.fillStyle = `rgba(93,173,226,${(ep*0.6).toFixed(2)})`;
+    ctx.beginPath();
+    ctx.moveTo(-s*0.25, s*0.35); ctx.lineTo(s*0.25, s*0.35);
+    ctx.lineTo(s*0.15, s*0.35+ep*s*0.7); ctx.lineTo(-s*0.15, s*0.35+ep*s*0.7);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+
+    rafId = requestAnimationFrame(_loop);
   }
 
-  function _getCell(r, c) {
-    return gridEl.querySelector(`[data-r="${r}"][data-c="${c}"]`);
+  // Inicia (ou reinicia) o loop de animação do canvas
+  function _iniciarLoop() {
+    if (rafId) cancelAnimationFrame(rafId);
+    frameCount = 0;
+    rafId = requestAnimationFrame(_loop);
   }
 
-  // ---- Comandos UI ------------------------------------------
+  // Gera partículas de explosão usando arrays tipados pré-alocados
+  function _spawnParticulas(x, y) {
+    const count = Math.min(12, MAX_PARTICLES - pCount);
+    for (let i = 0; i < count; i++) {
+      const a   = Math.random() * Math.PI * 2;
+      const spd = Math.random() * 2.5 + 0.8;
+      const idx = pCount++;
+      pX[idx]   = x; pY[idx]   = y;
+      pVX[idx]  = Math.cos(a)*spd; pVY[idx] = Math.sin(a)*spd;
+      pL[idx]   = 1;
+      pCol[idx] = Math.random() < 0.5 ? 0 : 1;
+    }
+  }
+
+  // ── Funções auxiliares de interface ────────────────────
+  function _setLog(html) { document.getElementById('log').innerHTML = html; }
+
+  function _setStatus(txt, cor) {
+    const el = document.getElementById('h-status');
+    el.textContent = txt;
+    el.style.color = cor || '#5dade2';
+  }
+
+  // Atualiza o HUD e o título da fase no cabeçalho
+  function _atualizarHUD() {
+    const coletados = bugs.filter(b => !b.vivo).length;
+    document.getElementById('h-fase').textContent  = faseNum + '/5';
+    document.getElementById('h-steps').textContent = passos || '—';
+    document.getElementById('h-bugs').textContent  = coletados + '/' + bugs.length;
+    document.getElementById('game-header-title').textContent = faseAtual.titulo;
+  }
+
+  const CMD_CHARS = { frente: '▲', esq: '⭯', dir: '⭮', coletar: '⚡' };
+
+  // Redesenha todos os blocos de comando na fila visual
+  function _renderizarFila() {
+    const fila  = document.getElementById('fila-comandos');
+    const vazia = document.getElementById('msg-vazia');
+    const countEl = document.getElementById('q-count');
+    if (countEl) countEl.style.display = 'none';
+    fila.querySelectorAll('.bloco-comando').forEach(el => el.remove());
+    if (comandos.length === 0) { if (vazia) vazia.style.display = 'block'; return; }
+    if (vazia) vazia.style.display = 'none';
+    // Usa DocumentFragment para inserir todos os elementos de uma vez
+    const frag = document.createDocumentFragment();
+    comandos.forEach((cmd, idx) => {
+      const b = document.createElement('div');
+      b.id = 'qi-' + idx;
+      b.className = 'bloco-comando' + (cmd === 'coletar' ? ' capture' : '');
+      b.title = cmd; b.textContent = CMD_CHARS[cmd] ?? cmd;
+      b.addEventListener('click', () => {
+        if (!executando) { comandos.splice(idx, 1); _renderizarFila(); }
+      });
+      frag.appendChild(b);
+    });
+    fila.appendChild(frag);
+    fila.scrollTop = fila.scrollHeight;
+  }
+
+  // Destaca visualmente o comando em execução e esmaece os já executados
+  function _destacarComando(idx) {
+    document.querySelectorAll('.bloco-comando').forEach((b, i) => {
+      b.className = 'bloco-comando'
+        + (comandos[i] === 'coletar' ? ' capture' : '')
+        + (i < idx ? ' feito' : i === idx ? ' ativo' : '');
+    });
+  }
+
+  // ── Inicialização da fase ───────────────────────────────
+  function init(fase, _gridId, numFase) {
+    faseAtual  = fase;
+    faseNum    = numFase ?? 1;
+    pos        = { r: fase.inicio.r, c: fase.inicio.c };
+    direcao    = fase.direcaoInicial ?? 0;
+    executando = false;
+    passos     = 0;
+    comandos   = [];
+    pCount     = 0; // limpa partículas
+
+    // Coleta posições de bug (tipo 3) do mapa
+    bugs = [];
+    for (let r = 0; r < fase.mapa.length; r++) {
+      for (let c = 0; c < fase.mapa[r].length; c++) {
+        if (fase.mapa[r][c] === 3) {
+          bugs.push({ r, c, emoji: _sortearEmoji(), vivo: true });
+        }
+      }
+    }
+
+    // Inicializa estados de glitch para cada bug
+    glitchStates = bugs.map(() => ({
+      ox: 0, oy: 0, skew: 0, glitching: false,
+      nextGlitch: 800 + Math.random() * 1500, glitchEnd: 0
+    }));
+    bugPhases = bugs.map(() => Math.random() * Math.PI * 2);
+
+    _setCanvasSize(fase.mapa.length, fase.mapa[0].length);
+    animPx    = pos.c * CELL + CELL / 2;
+    animPy    = pos.r * CELL + CELL / 2;
+    animAngle = DIRS[direcao].angle;
+
+    bugEls = _criarBugEls();
+
+    _setStatus('PRONTO');
+    _atualizarHUD();
+    _renderizarFila();
+    _setLog('aguardando programação da rota de missão...');
+    _iniciarLoop();
+  }
+
+  // ── Adição de comandos ──────────────────────────────────
   function adicionarComando(tipo) {
     if (executando) return;
     comandos.push(tipo);
-    _atualizarFilaUI();
+    _renderizarFila();
+    _setLog('adicionado: <span class="ok">' + CMD_CHARS[tipo] + ' ' + tipo.toUpperCase() + '</span>');
   }
 
   function limparComandos() {
     if (executando) return;
     comandos = [];
-    _atualizarFilaUI();
+    _renderizarFila();
+    _setLog('fila limpa · pronto');
   }
 
-  function _atualizarFilaUI() {
-    const fila  = document.getElementById('fila-comandos');
-    const vazia = document.getElementById('msg-vazia');
-    if (!fila) return;
-
-    // remove blocos anteriores mas mantém #msg-vazia
-    fila.querySelectorAll('.bloco-comando').forEach(el => el.remove());
-
-    if (comandos.length === 0) {
-      if (vazia) vazia.style.display = 'block';
-      return;
-    }
-    if (vazia) vazia.style.display = 'none';
-
-    const LABELS = {
-      frente:  '↑ Avançar',
-      esq:     '⭯ Girar à Esquerda',
-      dir:     '⭮ Girar à Direita',
-      coletar: '⚙️ Coletar',
-    };
-
-    comandos.forEach((cmd, idx) => {
-      const bloco = document.createElement('div');
-      bloco.classList.add('bloco-comando');
-      bloco.innerHTML = `
-        <span>${LABELS[cmd] ?? cmd}</span>
-        <span class="btn-remover" data-idx="${idx}" style="cursor:pointer;color:#e94560;font-weight:bold;">✕</span>
-      `;
-      bloco.querySelector('.btn-remover').addEventListener('click', () => {
-        if (!executando) { comandos.splice(idx, 1); _atualizarFilaUI(); }
-      });
-      fila.appendChild(bloco);
-    });
-
-    fila.scrollTop = fila.scrollHeight;
-  }
-
-  // ---- Execução ---------------------------------------------
+  // ── Execução da sequência ───────────────────────────────
   async function executar() {
     if (executando || comandos.length === 0) return;
     executando = true;
+    passos = 0;
+    document.getElementById('btn-executar').disabled = true;
+    _setStatus('EXECUTANDO', '#e8a020');
 
     for (let i = 0; i < comandos.length; i++) {
       const cmd = comandos[i];
-      _destacarComandoAtivo(i);
+      _destacarComando(i);
+      await _sleep(400);
 
       if (cmd === 'frente') {
-        const ok = _mover();
-        if (!ok) { _erro('Bateu numa parede! Tente novamente.'); return; }
-        await _sleep(300);
+        const d  = DIRS[direcao];
+        const nr = pos.r + d.dr;
+        const nc = pos.c + d.dc;
+        const v  = faseAtual.mapa[nr] && faseAtual.mapa[nr][nc];
+        if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && (v === 1 || v === 3)) {
+          pos = { r: nr, c: nc };
+          passos++;
+          _atualizarHUD();
+          _setLog('<span class="ok">▲ AVANÇAR · [' + String.fromCharCode(65+pos.c) + (pos.r+1) + ']</span>');
+        } else {
+          _setLog('<span class="warn">BLOQUEADO · parede detectada</span>');
+          const el = document.getElementById('qi-' + i);
+          if (el) el.className = 'bloco-comando falha';
+          await _sleep(300);
+          _erro('Colisão detectada! A nave não pode avançar.');
+          return;
+        }
       } else if (cmd === 'esq') {
         direcao = (direcao + 3) % 4;
-        _renderizarPersonagem();
-        await _sleep(300);
+        _setLog('<span class="ok">⭯ GIRAR ESQ.</span>');
       } else if (cmd === 'dir') {
         direcao = (direcao + 1) % 4;
-        _renderizarPersonagem();
-        await _sleep(300);
+        _setLog('<span class="ok">⭮ GIRAR DIR.</span>');
       } else if (cmd === 'coletar') {
-        const tipo = faseAtual.mapa[pos.r][pos.c];
-        if (tipo === 3) {
-          _sucesso();
-          return;
+        // Busca bug vivo na posição atual
+        let bugIdx = -1;
+        for (let j = 0; j < bugs.length; j++) {
+          if (bugs[j].vivo && bugs[j].r === pos.r && bugs[j].c === pos.c) { bugIdx = j; break; }
+        }
+        if (bugIdx >= 0) {
+          const bugAqui = bugs[bugIdx];
+          bugAqui.vivo = false;
+          bugEls[bugIdx].style.opacity = '0';
+          _spawnParticulas(pos.c * CELL + CELL/2, pos.r * CELL + CELL/2);
+          _atualizarHUD();
+          _setLog('<span class="win">⚡ BUG CAPTURADO · ' + bugAqui.emoji + ' patch aplicado!</span>');
+          // Verifica se todos foram coletados
+          let todos = true;
+          for (let j = 0; j < bugs.length; j++) { if (bugs[j].vivo) { todos = false; break; } }
+          if (todos) { await _sleep(300); _sucesso(); return; }
         } else {
-          _erro('Não há nada para coletar aqui!');
+          _setLog('<span class="warn">⚡ NENHUM BUG AQUI</span>');
+          const el = document.getElementById('qi-' + i);
+          if (el) el.className = 'bloco-comando capture falha';
+          await _sleep(300);
+          _erro('Nenhum bug nesta posição. Reposicione a nave.');
           return;
         }
       }
     }
 
-    // terminou todos os comandos sem coletar
-    _erro('Sequência incompleta. Você não chegou ao objetivo!');
+    let restantes = 0;
+    for (let j = 0; j < bugs.length; j++) { if (bugs[j].vivo) restantes++; }
+    _erro('Sequência incompleta. Ainda há ' + restantes + ' bug(s) para capturar!');
   }
 
-  function _mover() {
-    const d  = DIRS[direcao];
-    const nr = pos.r + d.dr;
-    const nc = pos.c + d.dc;
-    const rows = faseAtual.mapa.length;
-    const cols = faseAtual.mapa[0].length;
+  // ── Reinicialização ────────────────────────────────────
+  function _reiniciar(limparFila) {
+    pos        = { r: faseAtual.inicio.r, c: faseAtual.inicio.c };
+    direcao    = faseAtual.direcaoInicial ?? 0;
+    executando = false;
+    passos     = 0;
+    pCount     = 0;
+    animPx     = pos.c * CELL + CELL / 2;
+    animPy     = pos.r * CELL + CELL / 2;
 
-    if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) return false;
-    if (faseAtual.mapa[nr][nc] !== 1 && faseAtual.mapa[nr][nc] !== 3) return false;  // parede ou vazio
+    // Ressuscita todos os bugs
+    for (let i = 0; i < bugs.length; i++) {
+      bugs[i].vivo = true;
+      bugEls[i].style.opacity = '1';
+    }
 
-    pos = { r: nr, c: nc };
-    _renderizarPersonagem();
-    return true;
-  }
-
-  function _destacarComandoAtivo(idx) {
-    const blocos = document.querySelectorAll('.bloco-comando');
-    blocos.forEach((b, i) => {
-      b.style.outline = i === idx ? '2px solid #ffd700' : 'none';
-      b.style.opacity = i < idx ? '0.4' : '1';
+    if (limparFila) { comandos = []; _renderizarFila(); }
+    document.getElementById('btn-executar').disabled = false;
+    _setStatus('PRONTO');
+    _atualizarHUD();
+    _setLog('sistema reiniciado · pronto para nova sequencia');
+    document.querySelectorAll('.bloco-comando').forEach(b => {
+      b.className = 'bloco-comando' + (b.classList.contains('capture') ? ' capture' : '');
     });
   }
 
-  // ---- Feedback ---------------------------------------------
+  // ── Janela de feedback (modal) ──────────────────────────
   function _erro(msg) {
     executando = false;
-    // Passamos 'false' para NÃO limpar os comandos quando ele erra
-    _mostrarModal('❌ Erro!', msg, '#e94560', 'Tentar Novamente', () => _reiniciar(false));
+    document.getElementById('btn-executar').disabled = false;
+    _setStatus('FALHA', '#e05555');
+    _mostrarModal('❌', 'FALHA NA MISSÃO', msg, null, 'TENTAR NOVAMENTE', '#5dade2',
+      function() { _reiniciar(false); });
   }
 
   function _sucesso() {
     executando = false;
+    document.getElementById('btn-executar').disabled = false;
+    _setStatus('COMPLETO', '#5dade2');
     const temProxima = !!faseAtual.proximaFase;
-    const btnLabel   = temProxima ? 'Próxima Fase ➜' : 'Jogar Novamente';
-    _mostrarModal('🏆 Parabéns!', faseAtual.msgSucesso ?? 'Você concluiu a fase!', '#4caf50', btnLabel, () => {
-      if (temProxima) faseAtual.proximaFase();
-      // Passamos 'true' para limpar os comandos se ele for recomeçar o jogo do zero
-      else _reiniciar(true); 
-    });
+    if (!temProxima) {
+      _mostrarModal('🚀', 'MISSÃO CONCLUÍDA!',
+        'Incrível! Você capturou todos os bugs e salvou a missão Apollo 11. Chegamos à Lua!',
+        faseAtual.curiosidade ?? null,
+        'RECOMEÇAR', '#e8a020',
+        function() { Engine.init(FASE1, 'game-canvas', 1); },
+        'Não, obrigado', null);
+    } else {
+      _mostrarModal('🏆', 'FASE CONCLUÍDA!',
+        'Todos os bugs capturados! Sistema estabilizado.',
+        faseAtual.curiosidade ?? null,
+        'PRÓXIMA MISSÃO ▶', '#e8a020',
+        function() { faseAtual.proximaFase(); });
+    }
   }
 
-  // Adicionamos o parâmetro limparFila (que por padrão é false)
-  function _reiniciar(limparFila = false) {
-    pos       = { ...faseAtual.inicio };
-    direcao   = faseAtual.direcaoInicial ?? 0;
-    executando = false;
-    
-    // Só zera o array se for explicitamente solicitado
-    if (limparFila) {
-        comandos = [];
-        _atualizarFilaUI();
+  // Exibe o modal com curiosidade e até dois botões de ação
+  function _mostrarModal(emoji, titulo, msg, curiosidade, btnLabel, cor, callback, btn2Label, callback2) {
+    document.getElementById('modal-emoji').textContent = emoji;
+    document.getElementById('modal-title').textContent = titulo;
+    document.getElementById('modal-title').style.color = cor;
+    document.getElementById('modal-msg').textContent   = msg;
+
+    const curiosEl = document.getElementById('modal-curiosidade');
+    if (curiosidade && curiosEl) {
+      curiosEl.textContent = '💡 ' + curiosidade;
+      curiosEl.style.display = 'block';
+    } else if (curiosEl) {
+      curiosEl.style.display = 'none';
     }
 
-    _renderizarGrid();
-    
-    // Tira os destaques visuais (aquele brilho amarelo) dos blocos
-    document.querySelectorAll('.bloco-comando').forEach(b => {
-      b.style.outline = 'none';
-      b.style.opacity = '1';
-    });
-  }
+    const oldBtn = document.getElementById('modal-btn');
+    const btn    = oldBtn.cloneNode(true);
+    oldBtn.parentNode.replaceChild(btn, oldBtn);
+    btn.textContent = btnLabel;
+    btn.className   = 'modal-btn' + (cor === '#e8a020' ? ' amber' : '');
 
-  function _mostrarModal(titulo, msg, cor, btnLabel, callback) {
-    // Remove modal antigo se existir
-    document.getElementById('modal-feedback')?.remove();
-
-    const overlay = document.createElement('div');
-    overlay.id = 'modal-feedback';
-    overlay.style.cssText = `
-      position:fixed; inset:0; background:rgba(0,0,0,0.7);
-      display:flex; justify-content:center; align-items:center;
-      z-index:1000; animation: fadeIn 0.2s ease;
-    `;
-
-    overlay.innerHTML = `
-      <div style="
-        background:#1a1a2e; border:3px solid ${cor}; border-radius:16px;
-        padding:32px 40px; text-align:center; max-width:340px;
-        box-shadow: 0 0 40px ${cor}55;
-        animation: popIn 0.3s cubic-bezier(.34,1.56,.64,1);
-      ">
-        <div style="font-size:48px; margin-bottom:12px;">${titulo.split(' ')[0]}</div>
-        <h3 style="color:${cor}; font-size:22px; margin-bottom:10px;">${titulo.replace(titulo.split(' ')[0]+' ','')}</h3>
-        <p style="color:#ccc; margin-bottom:24px; line-height:1.5;">${msg}</p>
-        <button id="btn-modal-ok" style="
-          background:${cor}; color:#fff; border:none; border-radius:8px;
-          padding:12px 32px; font-size:16px; font-weight:bold; cursor:pointer;
-        ">${btnLabel}</button>
-      </div>
-    `;
-
-    // Injetar keyframes se ainda não existirem
-    if (!document.getElementById('modal-keyframes')) {
-      const style = document.createElement('style');
-      style.id = 'modal-keyframes';
-      style.textContent = `
-        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-        @keyframes popIn  { from{transform:scale(0.7);opacity:0} to{transform:scale(1);opacity:1} }
-      `;
-      document.head.appendChild(style);
+    const oldBtn2 = document.getElementById('modal-btn2');
+    if (btn2Label && oldBtn2) {
+      const btn2 = oldBtn2.cloneNode(true);
+      oldBtn2.parentNode.replaceChild(btn2, oldBtn2);
+      btn2.textContent = btn2Label;
+      btn2.style.display = 'block';
+      btn2.addEventListener('click', function() {
+        document.getElementById('modal-overlay').classList.remove('show');
+        if (callback2) callback2();
+      });
+    } else if (oldBtn2) {
+      oldBtn2.style.display = 'none';
     }
 
-    document.body.appendChild(overlay);
-    document.getElementById('btn-modal-ok').addEventListener('click', () => {
-      overlay.remove();
+    const box = document.getElementById('modal-box');
+    box.style.borderColor = cor;
+    box.style.boxShadow   = '0 0 40px ' + cor + '33';
+    document.getElementById('modal-overlay').classList.add('show');
+    btn.addEventListener('click', function() {
+      document.getElementById('modal-overlay').classList.remove('show');
       callback();
     });
   }
 
-  // ---- Utils ------------------------------------------------
-  function _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+  // Utilitário de delay
+  function _sleep(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
 
-  // ---- API pública ------------------------------------------
-  return { init, adicionarComando, limparComandos, executar };
+  // ── API pública ─────────────────────────────────────────
+  return { init: init, adicionarComando: adicionarComando, limparComandos: limparComandos, executar: executar };
 
 })();

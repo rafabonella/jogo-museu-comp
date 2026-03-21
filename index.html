@@ -1,81 +1,144 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jogo Museu Comp</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jogo Museu Comp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div id="tela-inicial">
-        <div class="conteudo-inicial">
-            <h1>Jogo Museu</h1>
-            
-            <div class="instrucoes">
-                <h3>Como Jogar:</h3>
-                <p>1. Leia o objetivo na parte superior da tela.</p>
-                <p>2. Clique nos botões de ação para montar a sua sequência de comandos.</p>
-                <p>3. Quando chegar ao objetivo, não esqueça de usar o comando <strong>"Coletar"</strong>.</p>
-                <p>4. Aperte "Executar" para testar o seu algoritmo!</p>
-            </div>
+<div id="dots-layer"></div>
+<div id="scanlines-global"></div>
 
-            <button id="btn-iniciar-jogo">▶ Iniciar Jogo</button>
-        </div>
+<!-- Tela inicial -->
+<div id="tela-inicial">
+  <div class="apollo-corner tl"></div><div class="apollo-corner tr"></div>
+  <div class="apollo-corner bl"></div><div class="apollo-corner br"></div>
+  <div class="tela-title">CAÇA BUGS</div>
+  <div class="tela-divider"></div>
+  <div class="instrucoes-apollo">
+    <div class="instr-label">MANUAL DE MISSÃO</div>
+    <div class="instr-item">01 · Use <strong>GIRAR</strong> para mudar a direção da nave e <strong>AVANÇAR</strong> para mover.</div>
+    <div class="instr-item">02 · Chegue até cada inseto e use <strong>COLETAR</strong> para capturá-lo.</div>
+    <div class="instr-item">03 · Pressione <strong>EXECUTAR</strong> para lançar a sequência programada.</div>
+    <div class="instr-item">04 · Capture todos os bugs para concluir a fase!</div>
+  </div>
+  <button class="btn-iniciar" id="btn-iniciar-jogo">&#9654; INICIAR MISSÃO</button>
+  <div class="creditos-apollo">
+    Desenvolvido por: <strong>Bryan</strong>, <strong>Pedro Tavares</strong> e <strong>Rafaella Bonella</strong><br>
+    Projeto Museu da Computacao · UFU 2026
+  </div>
+</div>
 
-        <div class="creditos">
-            <p>Desenvolvido por: <strong>Bryan</strong>, <strong>Pedro</strong> e <strong>Rafaella Bonella</strong></p>
-            <p>Projeto Museu da Computação - UFU (2026)</p>
-        </div>
+<!-- Container do jogo -->
+<div id="container-jogo">
+  <div class="game-header">
+    <div>
+      <!-- Título atualizado dinamicamente pela engine a cada fase -->
+      <div class="game-header-title" id="game-header-title">JOGO MUSEU COMP</div>
     </div>
-    
-    <div id="container-jogo" class="oculta">
+    <div class="header-dot"></div>
+  </div>
+  <div class="game-body">
 
-        <div id="secao-tabuleiro">
-            <div id="grid"></div>
-        </div>
-
-        <div id="secao-controles">
-
-            <div id="cabecalho">
-                <h2>Fase 1: O Início</h2>
-                <p>Ajude Ada Lovelace a chegar na máquina analítica de Babbage</p>
-            </div>
-
-            <div id="fila-comandos">
-                <p id="msg-vazia">Sua sequência de comandos aparecerá aqui...</p>
-            </div>
-
-            <div id="area-botoes">
-                <button id="btn-frente"  class="botoes">↑ Avançar</button>
-                <button id="btn-esq"     class="botoes">⭯ Girar pra esquerda</button>
-                <button id="btn-dir"     class="botoes">⭮ Girar pra direita</button>
-                <button id="btn-coletar" class="botoes">⚙️ Coletar</button>
-            </div>
-
-            <button id="btn-limpar"   class="botoes" style="margin-bottom:8px; background:#555;">🗑️ Limpar comandos</button>
-            <button id="btn-executar">▶ Executar código</button>
-
-        </div>
-
+    <!-- Tabuleiro -->
+    <div id="secao-tabuleiro">
+      <div id="canvas-wrap">
+        <canvas id="game-canvas" width="288" height="288"></canvas>
+        <div id="bug-layer"></div>
+      </div>
+      <div class="hud-row">
+        <div class="hud-item"><span class="hud-l">FASE</span><span class="hud-v" id="h-fase">1/5</span></div>
+        <div class="hud-item"><span class="hud-l">BUGS</span><span class="hud-v amber" id="h-bugs">0/1</span></div>
+        <div class="hud-item"><span class="hud-l">PASSOS</span><span class="hud-v" id="h-steps">—</span></div>
+        <div class="hud-item"><span class="hud-l">STATUS</span><span class="hud-v" style="font-size:7px;letter-spacing:1px" id="h-status">PRONTO</span></div>
+      </div>
     </div>
 
-    <!--
-        ORDEM DE CARREGAMENTO IMPORTANTE:
-        1. engine.js  — mecânica central (sem dependências)
-        2. faseN.js   — dados de cada fase (depende de nada)
-        3. script.js  — inicializador (depende de engine + fase)
+    <!-- Controles -->
+    <div id="secao-controles">
+      <div>
+        <div class="ctrl-label">Adicionar comando</div>
+        <div class="cmd-grid">
+          <button class="cmd-btn" id="btn-frente"><span class="cmd-arrow">▲</span><span class="cmd-lbl">AVANÇAR</span></button>
+          <button class="cmd-btn" id="btn-esq"><span class="cmd-arrow">⭯</span><span class="cmd-lbl">GIRAR ESQ.</span></button>
+          <button class="cmd-btn" id="btn-dir"><span class="cmd-arrow">⭮</span><span class="cmd-lbl">GIRAR DIR.</span></button>
+          <button class="cmd-btn capture" id="btn-coletar"><span class="cmd-arrow">⚡</span><span class="cmd-lbl">COLETAR</span></button>
+        </div>
+      </div>
+      <div>
+        <div class="fila-header">
+          <div class="ctrl-label" style="margin:0">Fila de comandos</div>
+          <span id="q-count" class="hud-l">0 / 40</span>
+        </div>
+        <div id="fila-comandos">
+          <p id="msg-vazia">nenhum comando adicionado</p>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="action-btn btn-play" id="btn-executar">&#9654; EXECUTAR</button>
+        <button class="action-btn btn-clear" id="btn-limpar">✕ LIMPAR</button>
+      </div>
+      <div id="log">aguardando programação da rota de missão...</div>
+    </div>
 
-        Para adicionar uma nova fase:
-          • Crie um arquivo faseN.js seguindo o modelo de fase1.js
-          • Adicione <script src="faseN.js"></script> abaixo
-          • No fase anterior, defina: proximaFase: () => Engine.init(FASEN, 'grid')
-    -->
-    <script src="engine.js"></script>
-    <script src="fase1.js"></script>
-    <script src="fase2.js"></script>
-    <!-- <script src="fase2.js"></script> -->
-    <!-- <script src="fase3.js"></script> -->
-    <script src="script.js"></script>
+  </div>
+</div>
+
+<!-- Modal de feedback -->
+<div id="modal-overlay">
+  <div class="modal-box" id="modal-box">
+    <div class="apollo-corner tl"></div><div class="apollo-corner tr"></div>
+    <div class="apollo-corner bl"></div><div class="apollo-corner br"></div>
+    <div class="modal-emoji" id="modal-emoji">🏆</div>
+    <div class="modal-title" id="modal-title">FASE CONCLUÍDA!</div>
+    <div class="modal-msg" id="modal-msg">Todos os bugs capturados!</div>
+    <!-- Caixa de curiosidade exibida entre fases -->
+    <div class="modal-curiosidade" id="modal-curiosidade" data-prefix="💡 " style="display:none"></div>
+    <button class="modal-btn" id="modal-btn">CONTINUAR</button>
+    <!-- Botão secundário — exibido apenas na tela final -->
+    <button class="modal-btn modal-btn-secundario" id="modal-btn2" style="display:none">Não, obrigado</button>
+  </div>
+</div>
+
+<!-- Pontos animados no fundo -->
+<script>
+(function() {
+  const layer = document.getElementById('dots-layer');
+  const isMobile = window.innerWidth <= 700;
+  const total = isMobile ? 25 : 70; // menos pontos no mobile
+  for (let i = 0; i < total; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot';
+    const sz = Math.random() * 2.2 + 1;
+    d.style.cssText = [
+      'width:'+sz+'px','height:'+sz+'px',
+      'left:'+(Math.random()*100).toFixed(2)+'%',
+      'top:'+(Math.random()*100).toFixed(2)+'%',
+      'animation-duration:'+(Math.random()*4+2).toFixed(2)+'s',
+      'animation-delay:-'+(Math.random()*6).toFixed(2)+'s'
+    ].join(';');
+    layer.appendChild(d);
+  }
+})();
+</script>
+
+<!--
+  ORDEM DE CARREGAMENTO IMPORTANTE:
+    1. engine.js  — motor central (sem dependencias)
+    2. faseN.js   — dados de cada fase (sem dependencias)
+    3. script.js  — inicializador (depende de engine + fases)
+-->
+<script src="engine.js"></script>
+<script src="fase1.js"></script>
+<script src="fase2.js"></script>
+<script src="fase3.js"></script>
+<script src="fase4.js"></script>
+<script src="fase5.js"></script>
+<script src="script.js"></script>
+
 </body>
 </html>

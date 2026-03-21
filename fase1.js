@@ -1,24 +1,22 @@
 const FASE1 = {
-  titulo:          'Fase 1: O Início',
-  descricao:       'Ajude Ada Lovelace a chegar na Máquina Analítica de Babbage',
-  direcaoInicial:  0,   // 0=direita
+  titulo:         'FASE 1 — DECOLAGEM',
+  direcaoInicial: 0,   // aponta para a direita
 
-  // Posição inicial (linha, coluna) — canto superior esquerdo
-  inicio: { r: 4, c: 0 },
+  inicio: { r: 3, c: 0 },
 
+  // Mapa: 0 = parede, 1 = caminho, 3 = bug
   mapa: [
-//col: 0  1  2  3  4  5  6  7
-    [ 0, 0, 0, 0, 0, 0, 0, 0 ],  // row 0
-    [ 0, 0, 0, 0, 0, 0, 0, 0 ],  // row 1
-    [ 0, 0, 0, 0, 0, 0, 0, 0 ],  // row 2
-    [ 0, 0, 0, 0, 0, 0, 0, 0 ],  // row 3
-    [ 1, 1, 1, 1, 1, 1, 1, 3 ],  // row 4 ← objetivo em (4,7)
-    [ 0, 0, 0, 0, 0, 0, 0, 0 ],  // row 5
-    [ 0, 0, 0, 0, 0, 0, 0, 0 ],  // row 6
-    [ 0, 0, 0, 0, 0, 0, 0, 0 ]   // row 7 
+    [ 0, 0, 0, 0, 0, 0, 0, 0 ],
+    [ 0, 0, 0, 0, 0, 0, 0, 0 ],
+    [ 0, 0, 0, 0, 0, 0, 0, 0 ],
+    [ 1, 1, 1, 1, 1, 1, 1, 3 ],  // bug em (3,7)
+    [ 0, 0, 0, 0, 0, 0, 0, 0 ],
+    [ 0, 0, 0, 0, 0, 0, 0, 0 ],
+    [ 0, 0, 0, 0, 0, 0, 0, 0 ],
+    [ 0, 0, 0, 0, 0, 0, 0, 0 ],
   ],
 
-  // Callback opcional para quando o jogador vencer (carrega próxima fase)
-  proximaFase: () => Engine.init(FASE2, 'grid'),
-  // Para habilitar: proximaFase: () => Engine.init(FASE2, 'grid')
+  curiosidade: 'O computador do Apollo 11 tinha apenas 72 KB de armazenamento. Uma foto tirada hoje ocupa cerca de 4.000 vezes mais espaço!',
+
+  proximaFase: () => Engine.init(FASE2, 'game-canvas', 2),
 };

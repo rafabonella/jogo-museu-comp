@@ -1,292 +1,483 @@
-/* Reset para tirar margens padrão do navegador */
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+/* ============================================================
+   STYLE.CSS — Estilos visuais do jogo Apollo Guidance Computer
+   Tema: blueprint espacial azul escuro
+   Fontes: Space Mono + Orbitron (Google Fonts)
+============================================================ */
+
+/* ── Reset geral ───────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Variaveis de cor ──────────────────────────────────── */
+:root {
+  --blue:       #5dade2;
+  --blue-dim:   rgba(93,173,226,.35);
+  --blue-faint: rgba(93,173,226,.08);
+  --amber:      #e8a020;
+  --red:        #e05555;
+  --green:      #4caf50;
+  --bg:         #061425;
+  --bg2:        #040e1a;
 }
 
+/* ── Corpo da pagina ───────────────────────────────────── */
 body {
-    background-color: #1a1a2e;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
+  background: var(--bg2);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Space Mono', monospace;
+  color: var(--blue);
+  overflow-x: hidden;
+  overflow-y: auto; /* permite respiro vertical no menu */
 }
 
+/* ── Pontos animados do fundo ──────────────────────────── */
+#dots-layer {
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 0; overflow: hidden;
+}
+.dot {
+  position: absolute; border-radius: 50%;
+  background: var(--blue);
+  animation: dot-pulse linear infinite;
+}
+@keyframes dot-pulse { 0%,100%{opacity:.04} 50%{opacity:.45} }
+
+/* Linhas de scan sobre tudo — desativado em mobile para performance */
+#scanlines-global {
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent, transparent 3px,
+    rgba(93,173,226,.005) 3px, rgba(93,173,226,.005) 4px
+  );
+  pointer-events: none; z-index: 9999;
+}
+
+/* ── Tela inicial ──────────────────────────────────────── */
+#tela-inicial {
+  position: relative; z-index: 10;
+  width: min(700px, 88vw);
+  background: var(--bg);
+  border: 1px solid rgba(93,173,226,.3);
+  border-radius: 4px;
+  padding: 64px 36px;
+  margin: clamp(16px,3vh,36px) 0;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 32px;
+  box-shadow: 0 0 60px rgba(93,173,226,.08), inset 0 0 40px rgba(0,0,0,.4);
+  animation: fadeUp .6s ease both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Cantos decorativos estilo HUD */
+.apollo-corner {
+  position: absolute; width: 14px; height: 14px;
+  border-color: var(--blue-dim); border-style: solid; border-width: 0;
+}
+.apollo-corner.tl { top:8px;    left:8px;   border-top-width:1px;    border-left-width:1px;  }
+.apollo-corner.tr { top:8px;    right:8px;  border-top-width:1px;    border-right-width:1px; }
+.apollo-corner.bl { bottom:8px; left:8px;   border-bottom-width:1px; border-left-width:1px;  }
+.apollo-corner.br { bottom:8px; right:8px;  border-bottom-width:1px; border-right-width:1px; }
+
+.tela-badge   { font-size: 8px; letter-spacing: 4px; color: var(--blue-dim); }
+.tela-title   {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(18px,3vw,24px); font-weight: 900;
+  letter-spacing: 4px; text-align: center;
+  text-shadow: 0 0 20px rgba(93,173,226,.5);
+}
+.tela-sub     { font-size: 8px; letter-spacing: 3px; color: var(--blue-dim); text-align: center; line-height: 2; }
+.tela-divider { width: 100%; height: 1px; background: linear-gradient(90deg, transparent, var(--blue-dim), transparent); }
+
+/* Caixa de instrucoes */
+.instrucoes-apollo {
+  background: rgba(0,15,30,.6);
+  border: 1px solid rgba(93,173,226,.15);
+  border-radius: 3px; padding: 12px 16px;
+  width: 100%; display: flex; flex-direction: column; gap: 7px;
+}
+.instr-label { font-size: 11px; letter-spacing: 2px; color: var(--blue-dim); margin-bottom: 2px; }
+.instr-item  {
+  font-size: 11px; letter-spacing: 1px;
+  color: rgba(93,173,226,.7); line-height: 1.5;
+  padding-left: 12px; border-left: 1px solid rgba(93,173,226,.2);
+}
+.instr-item strong { color: var(--amber); }
+
+/* Botao iniciar */
+.btn-iniciar {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px; letter-spacing: 3px; font-weight: 700;
+  padding: 14px 36px;
+  background: rgba(93,173,226,.08);
+  border: 1px solid rgba(93,173,226,.5);
+  color: var(--blue); border-radius: 2px;
+  cursor: pointer; transition: all .15s; text-transform: uppercase;
+}
+.btn-iniciar:hover {
+  background: rgba(93,173,226,.18);
+  border-color: var(--blue);
+  box-shadow: 0 0 20px rgba(93,173,226,.2);
+}
+
+/* Creditos */
+.creditos-apollo {
+  font-size: 12px; letter-spacing: 1px;
+  color: rgba(93,173,226,.4);
+  text-align: center; line-height: 2;
+}
+.creditos-apollo strong { color: rgba(93,173,226,.65); }
+
+/* ── Container do jogo ─────────────────────────────────── */
 #container-jogo {
-    display: flex;
-    width: 100%;
-    max-width: 900px;
-    height: 600px;
-    max-height: 95vh;
-
-    background-color: #fff;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    overflow: hidden;
+  position: relative; z-index: 10;
+  display: none;
+  width: min(1100px, 99vw);
+  background: var(--bg);
+  border: 1px solid rgba(93,173,226,.25);
+  border-radius: 4px; overflow: hidden;
+  box-shadow: 0 0 80px rgba(93,173,226,.06), inset 0 0 60px rgba(0,0,0,.5);
+  animation: fadeUp .5s ease both;
 }
 
-/* ---- LADO ESQUERDO (Tabuleiro) ---- */
+/* Barra do topo */
+.game-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 18px;
+  border-bottom: 1px solid rgba(93,173,226,.12);
+  background: rgba(0,10,20,.5);
+}
+.game-header-title { font-family: 'Orbitron', monospace; font-size: 10px; letter-spacing: 3px; text-shadow: 0 0 10px rgba(93,173,226,.4); }
+.game-header-sub   { font-size: 7px; letter-spacing: 2px; color: var(--blue-dim); }
+.header-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--blue); opacity: .6;
+  animation: dot-pulse 2s ease-in-out infinite;
+}
+
+.game-body { display: flex; }
+
+/* ── Tabuleiro (lado esquerdo) ─────────────────────────── */
 #secao-tabuleiro {
-    width: 60%;
-    background-color: #16213e;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+  flex: 0 0 auto;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 18px;
+  border-right: 1px solid rgba(93,173,226,.12);
+  background: rgba(4,14,26,.6);
+  gap: 12px;
 }
 
-#grid {
-    display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    grid-template-rows: repeat(8, 1fr);
-    gap: 2px;
-    
-    background-color: #0f3460;
-    border: 4px solid #0f3460;
+/* Wrapper do canvas com overlay de bugs */
+#canvas-wrap { position: relative; display: inline-block; }
+#game-canvas { display: block; border: 1px solid rgba(93,173,226,.25); border-radius: 2px; }
+#bug-layer   { position: absolute; top: 0; left: 0; pointer-events: none; }
 
-    width: 90%;
-    max-width: 450px;
-    aspect-ratio: 1 / 1;
+/* Elemento visual de cada bug (emoji + glitch) */
+.bug-el {
+  position: absolute; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transform-origin: center center;
+  pointer-events: none; transition: opacity .3s;
 }
 
-/* ---- LADO DIREITO (Controles) ---- */
+/* HUD de informacoes */
+.hud-row  { display: flex; justify-content: space-around; width: 100%; gap: 8px; }
+.hud-item {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1;
+  background: rgba(0,15,30,.5);
+  border: 1px solid rgba(93,173,226,.1);
+  border-radius: 2px; padding: 7px 4px;
+}
+.hud-l { font-size: 7px; letter-spacing: 2px; color: var(--blue-dim); }
+.hud-v { font-family: 'Orbitron', monospace; font-size: 14px; font-weight: 700; }
+.hud-v.amber { color: var(--amber); }
+
+/* ── Controles (lado direito) ──────────────────────────── */
 #secao-controles {
-    width: 40%;
-    /* Padding encolhe em telas menores */
-    padding: clamp(10px, 3vw, 20px); 
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 100%;
-    overflow: hidden;
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column;
+  padding: 16px; gap: 12px;
 }
+.ctrl-label { font-size: 10px; letter-spacing: 3px; color: var(--blue-dim); margin-bottom: 4px; }
 
-#cabecalho h2 {
-    color: #1a1a2e;
-    margin-bottom: 5px;
-    /* Título varia de 18px até 24px */
-    font-size: clamp(18px, 2.5vw, 24px); 
+/* Grade de botoes de comando */
+.cmd-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.cmd-btn {
+  background: var(--blue-faint);
+  border: 1px solid rgba(93,173,226,.2);
+  color: var(--blue);
+  font-family: 'Space Mono', monospace;
+  font-size: 12px; letter-spacing: 1px; padding: 11px 6px;
+  border-radius: 2px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  transition: all .12s; -webkit-tap-highlight-color: transparent;
 }
+.cmd-btn:hover  { background: rgba(93,173,226,.15); border-color: var(--blue); }
+.cmd-btn:active { background: rgba(93,173,226,.25); transform: scale(.97); }
+.cmd-arrow { font-size: 21px; line-height: 1; }
+.cmd-lbl   { font-size: 10px; letter-spacing: 1px; color: var(--blue-dim); }
 
-#cabecalho p {
-    color: #555;
-    /* Texto varia de 12px até 16px */
-    font-size: clamp(12px, 1.5vw, 16px);
-}
+/* Variante do botao COLETAR (ambar) */
+.cmd-btn.capture                { border-color: rgba(232,160,32,.3); }
+.cmd-btn.capture .cmd-arrow     { color: var(--amber); }
+.cmd-btn.capture .cmd-lbl       { color: rgba(232,160,32,.5); }
+.cmd-btn.capture:hover          { background: rgba(232,160,32,.1); border-color: var(--amber); }
+
+/* Fila de comandos */
+.fila-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+#q-count { font-size: 7px; letter-spacing: 2px; color: var(--blue-dim); }
 
 #fila-comandos {
-    flex-grow: 1;
-    min-height: 0;
-    background-color: #f4f4f4;
-    border: 2px dashed #ccc; 
-    border-radius: 8px;
-    margin: clamp(8px, 2vh, 15px) 0;
-    padding: clamp(6px, 1.5vw, 10px);
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
+  background: rgba(0,10,20,.7);
+  border: 1px solid rgba(93,173,226,.15);
+  border-radius: 3px; padding: 8px;
+  min-height: 54px; max-height: 130px; overflow-y: auto;
+  display: flex; flex-wrap: wrap; gap: 4px;
+  align-items: flex-start; align-content: flex-start;
+  flex: 1;
 }
+#fila-comandos::-webkit-scrollbar       { width: 3px; }
+#fila-comandos::-webkit-scrollbar-thumb { background: rgba(93,173,226,.2); border-radius: 2px; }
 
 #msg-vazia {
-    text-align: center;
-    color: #aaa;
-    font-style: italic;
-    margin-top: 20px;
+  font-size: 11px; letter-spacing: 2px;
+  color: rgba(93,173,226,.2);
+  width: 100%; text-align: center; padding: 6px 0;
 }
 
-#area-botoes {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: clamp(6px, 1.5vw, 10px); /* Espaço entre botões elástico */
-    margin-bottom: clamp(10px, 2vh, 15px);
-}
-
-.botoes {
-    padding: clamp(8px, 1.5vw, 12px);
-    font-size: clamp(12px, 1.5vw, 14px);
-    background-color: #0f3460;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-weight: bold;
-}
-.botoes:hover { background-color: #1a1a2e; }
-
-#btn-executar {
-    padding: clamp(12px, 2vw, 15px);
-    font-size: clamp(16px, 2vw, 20px);
-    background-color: #e94560;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
-}
-#btn-executar:hover { background-color: #d13d55; }
-
-/* --- CLASSES DO JAVASCRIPT --- */
-
-.celula {
-    width: 100%;
-    height: 100%;
-    transition: background-color 0.2s, transform 0.2s;
-}
-
-.caminho { background-color: #e94560; } 
-.parede { background-color: #16213e; border: 1px solid #0f3460; } 
-.objetivo { background-color: #ffd700; } 
-
-.personagem { 
-    background-color: #4caf50; 
-    border: 3px solid #fff; 
-    transform: scale(0.9); 
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
+/* Blocos individuais na fila */
 .bloco-comando {
-    background-color: #0f3460;
-    color: white;
-    padding: 8px 12px;
+  background: rgba(93,173,226,.1);
+  border: 1px solid rgba(93,173,226,.3);
+  border-radius: 2px; padding: 4px 9px;
+  font-size: 14px; cursor: pointer;
+  transition: all .12s; color: var(--blue); line-height: 1.4;
+  display: flex; align-items: center;
+  font-family: 'Space Mono', monospace;
+}
+.bloco-comando:hover          { background: rgba(224,85,85,.15); border-color: var(--red); color: var(--red); }
+.bloco-comando.ativo          { background: rgba(93,173,226,.3); border-color: var(--blue); box-shadow: 0 0 8px rgba(93,173,226,.4); }
+.bloco-comando.feito          { opacity: .28; }
+.bloco-comando.falha          { background: rgba(224,85,85,.15); border-color: var(--red); }
+.bloco-comando.capture        { color: var(--amber); border-color: rgba(232,160,32,.4); }
+.bloco-comando.capture.ativo  { background: rgba(232,160,32,.2); border-color: var(--amber); }
+
+/* Botoes executar e limpar */
+.btn-row    { display: flex; gap: 7px; }
+.action-btn {
+  flex: 1; padding: 13px 6px; border-radius: 2px;
+  font-family: 'Space Mono', monospace;
+  font-size: 12px; letter-spacing: 2px;
+  cursor: pointer; border: 1px solid; transition: all .15s;
+}
+.btn-play          { background: rgba(93,173,226,.08); border-color: rgba(93,173,226,.4); color: var(--blue); }
+.btn-play:hover    { background: rgba(93,173,226,.18); border-color: var(--blue); box-shadow: 0 0 10px rgba(93,173,226,.2); }
+.btn-play:disabled { opacity: .3; cursor: not-allowed; }
+
+/* Botao limpar — vermelho bem visivel */
+.btn-clear         { background: rgba(224,85,85,.18); border-color: #e05555; color: #ff6b6b; font-weight: 700; }
+.btn-clear:hover   { background: rgba(224,85,85,.35); border-color: #ff4444; color: #fff; box-shadow: 0 0 10px rgba(224,85,85,.3); }
+
+/* Log de missao */
+#log {
+  background: rgba(0,10,20,.8);
+  border: 1px solid rgba(93,173,226,.12);
+  border-radius: 3px; padding: 8px 12px;
+  font-size: 11px; letter-spacing: 1px;
+  color: rgba(93,173,226,.4); line-height: 2;
+  position: relative; overflow: hidden;
+}
+#log::before {
+  content: ''; position: absolute; top: 0; left: 0;
+  width: 40px; height: 1px;
+  background: rgba(93,173,226,.5);
+  animation: glow-scan 4s linear infinite;
+}
+@keyframes glow-scan { from{transform:translateX(-100%)} to{transform:translateX(800%)} }
+#log .ok  { color: var(--blue); }
+#log .warn{ color: var(--amber); }
+#log .win { color: var(--green); }
+
+/* ── Modal de feedback ─────────────────────────────────── */
+#modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.75);
+  z-index: 1000; justify-content: center; align-items: center;
+  padding: 16px;
+}
+#modal-overlay.show { display: flex; animation: fadeIn .2s ease; }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+@keyframes popIn  { from{transform:scale(.7);opacity:0} to{transform:scale(1);opacity:1} }
+
+.modal-box {
+  background: var(--bg);
+  border: 2px solid var(--blue); border-radius: 4px;
+  padding: 28px 36px; text-align: center;
+  width: min(400px, 95vw);
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 0 40px rgba(93,173,226,.2);
+  animation: popIn .3s cubic-bezier(.34,1.56,.64,1) both;
+  position: relative;
+}
+.modal-box .apollo-corner { position: absolute; }
+.modal-emoji { font-size: 44px; margin-bottom: 10px; }
+.modal-title { font-family: 'Orbitron', monospace; font-size: 14px; letter-spacing: 3px; margin-bottom: 10px; }
+.modal-msg   { font-size: 12px; letter-spacing: 1px; color: var(--blue-dim); margin-bottom: 16px; line-height: 1.8; }
+
+/* Caixa de curiosidade */
+.modal-curiosidade {
+  background: rgba(93,173,226,.06);
+  border: 1px solid rgba(93,173,226,.2);
+  border-radius: 3px;
+  padding: 12px 14px;
+  font-size: 13px; letter-spacing: .5px;
+  color: rgba(93,173,226,.85);
+  line-height: 1.9;
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.modal-btn {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px; letter-spacing: 2px; font-weight: 700;
+  padding: 12px 28px;
+  background: rgba(93,173,226,.1);
+  border: 1px solid var(--blue);
+  color: var(--blue); border-radius: 2px;
+  cursor: pointer; transition: all .15s;
+}
+.modal-btn:hover       { background: rgba(93,173,226,.2); box-shadow: 0 0 14px rgba(93,173,226,.2); }
+.modal-btn.amber       { border-color: var(--amber); color: var(--amber); background: rgba(232,160,32,.08); }
+.modal-btn.amber:hover { background: rgba(232,160,32,.18); }
+
+/* Botão secundário discreto — "Não, obrigado" */
+.modal-btn-secundario {
+  display: block;
+  margin: 10px auto 0;
+  font-size: 9px; letter-spacing: 1px;
+  padding: 8px 20px;
+  background: transparent;
+  border-color: rgba(93,173,226,.2);
+  color: rgba(93,173,226,.4);
+}
+.modal-btn-secundario:hover {
+  background: rgba(93,173,226,.06);
+  border-color: rgba(93,173,226,.4);
+  color: var(--blue);
+  box-shadow: none;
+}
+
+/* ── Responsivo ────────────────────────────────────────── */
+@media (max-width: 700px) {
+
+  /* Desativa scanlines no mobile — economiza GPU */
+  #scanlines-global { display: none; }
+
+  /* Reduz opacidade dos pontos para aliviar compositing */
+  .dot { animation-duration: 6s !important; }
+
+  /* Permite scroll vertical na página toda */
+  html, body {
+    overflow-y: auto;
+    overflow-x: hidden;
+    align-items: flex-start;
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  /* Tela inicial com respiro no mobile */
+  #tela-inicial {
+    width: 90vw;
+    min-height: auto;
+    height: auto;
     border-radius: 4px;
-    font-size: 14px;
-    font-weight: bold;
-    display: flex;
-    justify-content: space-between;
-}
+    padding: 28px 20px 32px;
+    justify-content: flex-start;
+    margin: 24px 0;
+  }
 
-/* --- CLASSE DE OCULTAÇÃO (Essencial para a transição) --- */
-.oculta { 
-    display: none !important; 
-}
+  /* Container do jogo ocupa tela toda */
+  #container-jogo {
+    width: 100vw;
+    border-radius: 0;
+    height: auto;
+    min-height: 100dvh;
+  }
 
-/* --- ESTILOS DA TELA INICIAL (Fluidos) --- */
-#tela-inicial {
-    width: 100%;
-    max-width: 900px;
-    height: 90dvh; 
-    max-height: 600px;
-    min-height: 450px;
-    background-color: #16213e;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    display: flex;
+  /* Layout empilhado verticalmente no mobile */
+  .game-body {
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    position: relative; 
+    height: auto;
+  }
+
+  /* Tabuleiro no topo */
+  #secao-tabuleiro {
+    border-right: none;
+    border-bottom: 1px solid rgba(93,173,226,.12);
+    padding: 14px 12px;
+    width: 100%;
+    flex: 0 0 auto;
+  }
+
+  /* Canvas sem override CSS — tamanho definido pela engine */
+  #game-canvas { width: auto; height: auto; }
+
+  /* HUD menor */
+  .hud-l { font-size: 6px; }
+  .hud-v { font-size: 12px; }
+  .hud-item { padding: 5px 4px; }
+
+  /* Controles ocupam o restante com scroll */
+  #secao-controles {
+    padding: 14px 12px;
+    width: 100%;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    gap: 10px;
+  }
+
+  /* Botões de comando maiores para toque */
+  .cmd-grid { gap: 8px; }
+  .cmd-btn  { padding: 14px 6px; }
+  .cmd-arrow { font-size: 22px; }
+  .cmd-lbl   { font-size: 9px; }
+
+  /* Fila de comandos com mais espaço */
+  #fila-comandos {
+    max-height: 100px;
+    min-height: 44px;
+  }
+
+  /* Botões executar/limpar maiores */
+  .action-btn {
+    padding: 13px 6px;
+    font-size: 10px;
+  }
+
+  /* Log menor */
+  #log { font-size: 8px; line-height: 1.8; }
+
+  /* Modal cabe na tela */
+  .modal-box {
+    padding: 22px 20px;
+    width: min(380px, 95vw);
+    max-height: 88dvh;
+  }
+  .modal-emoji { font-size: 36px; }
+  .modal-title { font-size: 12px; letter-spacing: 2px; }
+  .modal-msg   { font-size: 9px; }
+  .modal-curiosidade { font-size: 11px; padding: 10px 12px; }
 }
 
-.conteudo-inicial {
-    text-align: center;
-    width: 90%;
-    max-width: 500px;
-    margin-bottom: clamp(20px, 5vh, 50px); /* Margem que estica/encolhe */
-}
-
-.conteudo-inicial h1 {
-    color: #ffd700;
-    /* Fonte: mínimo 28px, ideal 5vw (relativo à tela), máximo 42px */
-    font-size: clamp(28px, 5vw, 42px);
-    margin-bottom: clamp(15px, 3vh, 30px);
-    text-shadow: 0 4px 10px rgba(0,0,0,0.3);
-}
-
-.instrucoes {
-    background-color: rgba(255, 255, 255, 0.05);
-    padding: clamp(15px, 3vw, 25px); /* Espaçamento interno relativo */
-    border-radius: 8px;
-    border: 1px dashed #0f3460;
-    margin-bottom: clamp(20px, 4vh, 40px);
-    text-align: left;
-    color: #ccc;
-}
-
-.instrucoes h3 { 
-    color: #e94560; 
-    margin-bottom: clamp(10px, 2vh, 15px); 
-    font-size: clamp(18px, 3vw, 20px);
-}
-
-.instrucoes p { 
-    margin-bottom: clamp(8px, 1.5vh, 12px); 
-    font-size: clamp(13px, 2vw, 16px); 
-    line-height: 1.5; 
-}
-
-#btn-iniciar-jogo {
-    padding: clamp(12px, 2vh, 16px) clamp(20px, 5vw, 40px);
-    font-size: clamp(16px, 3vw, 22px);
-    font-weight: bold;
-    background-color: #4caf50;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: transform 0.2s, background-color 0.2s;
-    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
-    width: clamp(200px, 60%, 300px);
-}
-
-#btn-iniciar-jogo:hover { 
-    background-color: #45a049; 
-    transform: translateY(-2px); 
-}
-
-.creditos {
-    position: absolute;
-    bottom: clamp(10px, 2vh, 20px);
-    text-align: center;
-    color: #888;
-    font-size: clamp(11px, 1.5vw, 14px);
-    line-height: 1.6;
-    width: 90%; /* Evita que o texto encoste muito nas bordas no celular */
-}
-.creditos strong { color: #bbb; }
-
-/* --- RESPONSIVIDADE --- */
-@media (max-width: 768px) {
-    body { align-items: flex-start; }
-
-    /* Tela Inicial (Celular) */
-    #tela-inicial {
-        height: 100dvh; 
-        max-height: none;
-        border-radius: 0; 
-    }
-
-    /* Jogo (Celular) - Muda de lado-a-lado para empilhado */
-    #container-jogo {
-        flex-direction: column;
-        width: 100%;
-        height: 100dvh;
-        border-radius: 0;
-    }
-
-    #secao-tabuleiro {
-        width: 100%;
-        height: 45dvh; 
-        padding: 10px;
-    }
-
-    #grid {
-        /* Garante que o tabuleiro não vaze a tela */
-        width: min(100%, 40dvh);
-        height: min(100%, 40dvh);
-        margin: 0;
-    }
-
-    #secao-controles {
-        width: 100%;
-        height: 55dvh; 
-    }
-
-    /* Proteção para o Flexbox não esmagar elementos vitais */
-    #cabecalho, #area-botoes, #btn-executar { 
-        flex-shrink: 0; 
-    } 
+/* Telas muito pequenas (ex: iPhone SE) */
+@media (max-width: 380px) {
+  .cmd-btn  { padding: 11px 4px; }
+  .cmd-arrow { font-size: 18px; }
+  #fila-comandos { max-height: 80px; }
 }

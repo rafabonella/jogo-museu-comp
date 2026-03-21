@@ -1,37 +1,38 @@
 // ============================================================
 //  SCRIPT.JS — Inicializador e ligação dos botões
-//  Para adicionar novas fases: importe o arquivo faseN.js no
-//  HTML e chame Engine.init(FASEN, 'grid') quando quiser trocar.
+//
+//  Ordem de carregamento no HTML (importante):
+//    1. engine.js  — motor central (sem dependências)
+//    2. faseN.js   — dados de cada fase (sem dependências)
+//    3. script.js  — inicializador (depende de engine + fases)
+//
+//  Para adicionar novas fases:
+//    • Crie faseN.js seguindo o modelo das fases existentes
+//    • Adicione <script src="faseN.js"> no HTML antes de script.js
+//    • Na fase anterior, defina: proximaFase: () => Engine.init(FASEN, 'game-canvas', N)
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', () => {
 
-  // ── Controle do Menu Inicial ────────────────────────────────
-  const telaInicial = document.getElementById('tela-inicial');
+  // ── Controle da tela inicial ────────────────────────────
+  const telaInicial   = document.getElementById('tela-inicial');
   const containerJogo = document.getElementById('container-jogo');
-  const btnIniciar = document.getElementById('btn-iniciar-jogo');
 
-  // O jogo só começa de fato quando este botão é clicado
-  btnIniciar.addEventListener('click', () => {
-      telaInicial.classList.add('oculta');      // Esconde o menu
-      containerJogo.classList.remove('oculta'); // Mostra o jogo
-      
-      // Inicializa a engine na Fase 1
-      // Troque FASE1 por FASE2, FASE3... conforme quiser carregar.
-      Engine.init(FASE1, 'grid');
+  document.getElementById('btn-iniciar-jogo').addEventListener('click', () => {
+    telaInicial.style.display   = 'none';
+    containerJogo.style.display = 'flex';
+    containerJogo.style.flexDirection = 'column';
+    Engine.init(FASE1, 'game-canvas', 1);
   });
 
-  // ── Botões de comando ──────────────────────────────────────
+  // ── Botões de comando ───────────────────────────────────
   document.getElementById('btn-frente') .addEventListener('click', () => Engine.adicionarComando('frente'));
   document.getElementById('btn-esq')    .addEventListener('click', () => Engine.adicionarComando('esq'));
   document.getElementById('btn-dir')    .addEventListener('click', () => Engine.adicionarComando('dir'));
   document.getElementById('btn-coletar').addEventListener('click', () => Engine.adicionarComando('coletar'));
 
-  // ── Limpar / Executar ──────────────────────────────────────
+  // ── Executar e limpar ───────────────────────────────────
   document.getElementById('btn-executar').addEventListener('click', () => Engine.executar());
-
-  // Botão de limpar (se existir no HTML)
-  const btnLimpar = document.getElementById('btn-limpar');
-  if (btnLimpar) btnLimpar.addEventListener('click', () => Engine.limparComandos());
+  document.getElementById('btn-limpar')  .addEventListener('click', () => Engine.limparComandos());
 
 });
