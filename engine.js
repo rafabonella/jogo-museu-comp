@@ -576,7 +576,12 @@ const Engine = (() => {
         faseAtual.curiosidade ?? null,
         'RECOMEÇAR', '#e8a020',
         function() { Engine.init(FASE1, 'game-canvas', 1); },
-        'Não, obrigado', null);
+        'Não, obrigado', 
+        function() { 
+          document.getElementById('container-jogo').style.display = 'none';
+          document.getElementById('tela-inicial').style.display = 'flex';
+        }
+      );
     } else {
       _mostrarModal('🏆', 'FASE CONCLUÍDA!',
         'Todos os bugs capturados! Sistema estabilizado.',
