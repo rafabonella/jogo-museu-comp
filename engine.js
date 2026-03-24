@@ -9,6 +9,7 @@ const Engine = (() => {
   // ── Estado ─────────────────────────────────────────────
   let faseAtual  = null;
   let comandos   = [];
+  let cursorIndex = 0;     // Indica a posição de inserção atual
   let pos        = { r: 0, c: 0 };
   let direcao    = 0;      // 0=direita 1=baixo 2=esquerda 3=cima
   let executando = false;
@@ -369,27 +370,106 @@ const Engine = (() => {
 
   const CMD_CHARS = { frente: '▲', esq: '⭯', dir: '⭮', coletar: '⚡' };
 
-  // Redesenha todos os blocos de comando na fila visual
+  // Redesenha todos os blocos de comando na fila visual e reposiciona o cursor de inserção
   function _renderizarFila() {
-    const fila  = document.getElementById('fila-comandos');
-    const vazia = document.getElementById('msg-vazia');
+    const fila = document.getElementById('fila-comandos');
     const countEl = document.getElementById('q-count');
     if (countEl) countEl.style.display = 'none';
-    fila.querySelectorAll('.bloco-comando').forEach(el => el.remove());
-    if (comandos.length === 0) { if (vazia) vazia.style.display = 'block'; return; }
-    if (vazia) vazia.style.display = 'none';
-    // Usa DocumentFragment para inserir todos os elementos de uma vez
+
+    // Limpa fila atual mantendo a funcionalidade de re-criar
+    fila.innerHTML = '';
+
+    if (comandos.length === 0) {
+      const vazia = document.createElement('p');
+      vazia.id = 'msg-vazia';
+      vazia.textContent = 'nenhum comando adicionado';
+      fila.appendChild(vazia);
+      
+      if (!executando) {
+        const cur = document.createElement('div');
+        cur.className = 'cursor-insercao';
+        fila.appendChild(cur);
+
+        const espacoExtra = document.createElement('div');
+        espacoExtra.style.flexGrow = '1';
+        espacoExtra.style.width = '100%';
+        espacoExtra.addEventListener('click', () => {
+          if (!executando) { cursorIndex = comandos.length; _renderizarFila(); }
+        });
+        fila.appendChild(espacoExtra);
+      }
+      return;
+    }
+
+    if (cursorIndex > comandos.length) cursorIndex = comandos.length;
+
     const frag = document.createDocumentFragment();
+
     comandos.forEach((cmd, idx) => {
+      // Inserir o cursor de edição se for o local certo
+      if (!executando && idx === cursorIndex) {
+        const cur = document.createElement('div');
+        cur.className = 'cursor-insercao';
+        frag.appendChild(cur);
+      }
+
       const b = document.createElement('div');
       b.id = 'qi-' + idx;
       b.className = 'bloco-comando' + (cmd === 'coletar' ? ' capture' : '');
-      b.title = cmd; b.textContent = CMD_CHARS[cmd] ?? cmd;
-      b.addEventListener('click', () => {
-        if (!executando) { comandos.splice(idx, 1); _renderizarFila(); }
+      b.title = cmd;
+
+      // Span com o símbolo/texto do comando
+      const spanText = document.createElement('span');
+      spanText.className = 'cmd-text';
+      spanText.textContent = CMD_CHARS[cmd] ?? cmd;
+      b.appendChild(spanText);
+
+      // Botão de remover que não afeta a seleção
+      const spanDel = document.createElement('span');
+      spanDel.className = 'cmd-del';
+      spanDel.textContent = '✕';
+      spanDel.title = 'Remover';
+      spanDel.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!executando) {
+          comandos.splice(idx, 1);
+          if (cursorIndex > idx) cursorIndex--;
+          else if (cursorIndex === comandos.length + 1) cursorIndex--;
+          _renderizarFila();
+        }
       });
+      b.appendChild(spanDel);
+
+      // Clicar no bloco muda o cursor de inserção para antes dele
+      b.addEventListener('click', () => {
+        if (!executando) {
+          cursorIndex = idx;
+          _renderizarFila();
+        }
+      });
+
       frag.appendChild(b);
     });
+
+    // Se o cursor estiver no final
+    if (!executando && cursorIndex === comandos.length) {
+      const cur = document.createElement('div');
+      cur.className = 'cursor-insercao';
+      frag.appendChild(cur);
+    }
+
+    // Área flexível invisível para permitir clique no final da fila com facilidade
+    if (!executando) {
+      const espacoExtra = document.createElement('div');
+      espacoExtra.style.flexGrow = '1';
+      espacoExtra.style.alignSelf = 'stretch';
+      espacoExtra.style.minWidth = '30px';
+      espacoExtra.addEventListener('click', () => {
+        if (!executando) { cursorIndex = comandos.length; _renderizarFila(); }
+      });
+      frag.appendChild(espacoExtra);
+    }
+
     fila.appendChild(frag);
     fila.scrollTop = fila.scrollHeight;
   }
@@ -412,6 +492,7 @@ const Engine = (() => {
     executando = false;
     passos     = 0;
     comandos   = [];
+    cursorIndex = 0;
     pCount     = 0; // limpa partículas
 
     // Coleta posições de bug (tipo 3) do mapa
@@ -448,7 +529,11 @@ const Engine = (() => {
   // ── Adição de comandos ──────────────────────────────────
   function adicionarComando(tipo) {
     if (executando) return;
-    comandos.push(tipo);
+    if (cursorIndex > comandos.length) cursorIndex = comandos.length;
+    
+    comandos.splice(cursorIndex, 0, tipo);
+    cursorIndex++;
+    
     _renderizarFila();
     _setLog('adicionado: <span class="ok">' + CMD_CHARS[tipo] + ' ' + tipo.toUpperCase() + '</span>');
   }
@@ -456,6 +541,7 @@ const Engine = (() => {
   function limparComandos() {
     if (executando) return;
     comandos = [];
+    cursorIndex = 0;
     _renderizarFila();
     _setLog('fila limpa · pronto');
   }
@@ -464,6 +550,8 @@ const Engine = (() => {
   async function executar() {
     if (executando || comandos.length === 0) return;
     executando = true;
+    _renderizarFila(); // Re-renderizar para esconder cursor de edição
+
     passos = 0;
     document.getElementById('btn-executar').disabled = true;
     _setStatus('EXECUTANDO', '#e8a020');
@@ -546,7 +634,9 @@ const Engine = (() => {
       bugEls[i].style.opacity = '1';
     }
 
-    if (limparFila) { comandos = []; _renderizarFila(); }
+    if (limparFila) { comandos = []; cursorIndex = 0; _renderizarFila(); }
+    else { _renderizarFila(); } // Restaura cursor
+    
     document.getElementById('btn-executar').disabled = false;
     _setStatus('PRONTO');
     _atualizarHUD();
@@ -559,6 +649,7 @@ const Engine = (() => {
   // ── Janela de feedback (modal) ──────────────────────────
   function _erro(msg) {
     executando = false;
+    _renderizarFila(); // Restaura cursor na interface
     document.getElementById('btn-executar').disabled = false;
     _setStatus('FALHA', '#e05555');
     _mostrarModal('❌', 'FALHA NA MISSÃO', msg, null, 'TENTAR NOVAMENTE', '#5dade2',
@@ -567,6 +658,7 @@ const Engine = (() => {
 
   function _sucesso() {
     executando = false;
+    _renderizarFila(); // Restaura cursor na interface
     document.getElementById('btn-executar').disabled = false;
     _setStatus('COMPLETO', '#5dade2');
     const temProxima = !!faseAtual.proximaFase;

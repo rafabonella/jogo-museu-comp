@@ -251,22 +251,55 @@ body {
   width: 100%; text-align: center; padding: 6px 0;
 }
 
+/* Cursor de inserção na fila */
+.cursor-insercao {
+  width: 4px;
+  height: 24px;
+  background: var(--amber);
+  border-radius: 2px;
+  margin: auto 2px;
+  animation: blink 1s step-end infinite;
+  box-shadow: 0 0 6px rgba(232,160,32,.5);
+}
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
 /* Blocos individuais na fila */
 .bloco-comando {
   background: rgba(93,173,226,.1);
   border: 1px solid rgba(93,173,226,.3);
-  border-radius: 2px; padding: 4px 9px;
+  border-radius: 2px; padding: 4px 6px 4px 9px;
   font-size: 14px; cursor: pointer;
   transition: all .12s; color: var(--blue); line-height: 1.4;
-  display: flex; align-items: center;
+  display: flex; align-items: center; justify-content: space-between;
   font-family: 'Space Mono', monospace;
 }
-.bloco-comando:hover          { background: rgba(224,85,85,.15); border-color: var(--red); color: var(--red); }
+.bloco-comando:hover          { background: rgba(93,173,226,.15); border-color: rgba(93,173,226,.6); }
 .bloco-comando.ativo          { background: rgba(93,173,226,.3); border-color: var(--blue); box-shadow: 0 0 8px rgba(93,173,226,.4); }
 .bloco-comando.feito          { opacity: .28; }
 .bloco-comando.falha          { background: rgba(224,85,85,.15); border-color: var(--red); }
 .bloco-comando.capture        { color: var(--amber); border-color: rgba(232,160,32,.4); }
 .bloco-comando.capture.ativo  { background: rgba(232,160,32,.2); border-color: var(--amber); }
+
+/* Botão de remover no bloco */
+.cmd-del {
+  margin-left: 8px;
+  font-size: 11px;
+  color: rgba(224,85,85,.6);
+  transition: all .15s;
+  padding: 0 4px;
+  border-radius: 2px;
+}
+.cmd-del:hover {
+  color: #fff;
+  background: var(--red);
+}
+.bloco-comando.capture .cmd-del {
+  color: rgba(232,160,32,.6);
+}
+.bloco-comando.capture .cmd-del:hover {
+  color: #fff;
+  background: var(--amber);
+}
 
 /* Botoes executar e limpar */
 .btn-row    { display: flex; gap: 7px; }

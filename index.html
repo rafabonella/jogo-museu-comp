@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Jogo Museu Comp</title>
+<title>Operação Debug</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -13,38 +13,35 @@
 <div id="dots-layer"></div>
 <div id="scanlines-global"></div>
 
-<!-- Tela inicial -->
 <div id="tela-inicial">
   <div class="apollo-corner tl"></div><div class="apollo-corner tr"></div>
   <div class="apollo-corner bl"></div><div class="apollo-corner br"></div>
-  <div class="tela-title">CAÇA BUGS</div>
+  <div class="tela-title">OPERAÇÃO DEBUG</div>
   <div class="tela-divider"></div>
   <div class="instrucoes-apollo">
     <div class="instr-label">MANUAL DE MISSÃO</div>
     <div class="instr-item">01 · Use <strong>GIRAR</strong> para mudar a direção da nave e <strong>AVANÇAR</strong> para mover.</div>
     <div class="instr-item">02 · Chegue até cada inseto e use <strong>COLETAR</strong> para capturá-lo.</div>
-    <div class="instr-item">03 · Pressione <strong>EXECUTAR</strong> para lançar a sequência programada.</div>
-    <div class="instr-item">04 · Capture todos os bugs para concluir a fase!</div>
+    <div class="instr-item">03 · Edite a fila: clique num bloco para inserir antes dele, ou no ✕ para remover.</div>
+    <div class="instr-item">04 · Pressione <strong>EXECUTAR</strong> para lançar a sequência programada.</div>
+    <div class="instr-item">05 · Capture todos os bugs para concluir a fase!</div>
   </div>
   <button class="btn-iniciar" id="btn-iniciar-jogo">&#9654; INICIAR MISSÃO</button>
   <div class="creditos-apollo">
-    Desenvolvido por: <strong>Bryan</strong>, <strong>Pedro Tavares</strong> e <strong>Rafaella Bonella</strong><br>
+    Desenvolvido por: <strong>Bryan Monteiro</strong>, <strong>Pedro Tavares</strong> e <strong>Rafaella Bonella</strong><br>
     Projeto Museu da Computacao · UFU 2026
   </div>
 </div>
 
-<!-- Container do jogo -->
 <div id="container-jogo">
   <div class="game-header">
     <div>
-      <!-- Título atualizado dinamicamente pela engine a cada fase -->
-      <div class="game-header-title" id="game-header-title">JOGO MUSEU COMP</div>
+      <div class="game-header-title" id="game-header-title">OPERAÇÃO DEBUG</div>
     </div>
     <div class="header-dot"></div>
   </div>
   <div class="game-body">
 
-    <!-- Tabuleiro -->
     <div id="secao-tabuleiro">
       <div id="canvas-wrap">
         <canvas id="game-canvas" width="288" height="288"></canvas>
@@ -58,7 +55,6 @@
       </div>
     </div>
 
-    <!-- Controles -->
     <div id="secao-controles">
       <div>
         <div class="ctrl-label">Adicionar comando</div>
@@ -88,7 +84,6 @@
   </div>
 </div>
 
-<!-- Modal de feedback -->
 <div id="modal-overlay">
   <div class="modal-box" id="modal-box">
     <div class="apollo-corner tl"></div><div class="apollo-corner tr"></div>
@@ -96,15 +91,12 @@
     <div class="modal-emoji" id="modal-emoji">🏆</div>
     <div class="modal-title" id="modal-title">FASE CONCLUÍDA!</div>
     <div class="modal-msg" id="modal-msg">Todos os bugs capturados!</div>
-    <!-- Caixa de curiosidade exibida entre fases -->
     <div class="modal-curiosidade" id="modal-curiosidade" data-prefix="💡 " style="display:none"></div>
     <button class="modal-btn" id="modal-btn">CONTINUAR</button>
-    <!-- Botão secundário — exibido apenas na tela final -->
     <button class="modal-btn modal-btn-secundario" id="modal-btn2" style="display:none">Não, obrigado</button>
   </div>
 </div>
 
-<!-- Pontos animados no fundo -->
 <script>
 (function() {
   const layer = document.getElementById('dots-layer');
@@ -126,12 +118,6 @@
 })();
 </script>
 
-<!--
-  ORDEM DE CARREGAMENTO IMPORTANTE:
-    1. engine.js  — motor central (sem dependencias)
-    2. faseN.js   — dados de cada fase (sem dependencias)
-    3. script.js  — inicializador (depende de engine + fases)
--->
 <script src="engine.js"></script>
 <script src="fase1.js"></script>
 <script src="fase2.js"></script>
