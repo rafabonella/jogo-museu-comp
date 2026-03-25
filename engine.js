@@ -581,10 +581,10 @@ const Engine = (() => {
         }
       } else if (cmd === 'esq') {
         direcao = (direcao + 3) % 4;
-        _setLog('<span class="ok">⭯ GIRAR ESQ.</span>');
+        _setLog('<span class="ok">↺ GIRAR ESQ.</span>');
       } else if (cmd === 'dir') {
         direcao = (direcao + 1) % 4;
-        _setLog('<span class="ok">⭮ GIRAR DIR.</span>');
+        _setLog('<span class="ok">↻ GIRAR DIR.</span>');
       } else if (cmd === 'coletar') {
         // Busca bug vivo na posição atual
         let bugIdx = -1;
